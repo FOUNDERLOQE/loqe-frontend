@@ -7,5 +7,5 @@ export const experiencesQuery = `*[_type == "experience"]{
   persona,
   lens,
   media,
-  "destinationName": destination->name
+  "destinationName": destination->title
 } | order(title asc)`
