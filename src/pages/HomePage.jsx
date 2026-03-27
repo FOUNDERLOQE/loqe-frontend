@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { sanity } from '../lib/sanity'
 import DestinationCard from '../components/DestinationCard'
 
@@ -52,16 +53,25 @@ function HomePage() {
 
   return (
     <div className="page">
-      <header className="hero">
+      <header className="hero hero-home">
         <p className="eyebrow">LOQE</p>
-        <h1>Curated luxury travel, tailored to the client.</h1>
+        <h1>Luxury travel, intelligently tailored.</h1>
         <p className="subtext">
-          Discover destinations shaped for high-intent, personalized travel planning.
+          Move from client conversation to curated recommendations and itinerary logic through a structured luxury travel engine.
         </p>
+
+        <div className="hero-actions">
+          <Link to="/client-intake" className="primary-button">
+            Start client intake
+          </Link>
+          <Link to="/recommendations" className="secondary-button">
+            View recommendations
+          </Link>
+        </div>
       </header>
 
       <section>
-        <h2 className="section-title">Destinations</h2>
+        <h2 className="section-title">Featured Destinations</h2>
 
         <div className="grid">
           {destinations.map((destination) => (

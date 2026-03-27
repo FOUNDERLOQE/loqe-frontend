@@ -1,5 +1,15 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
+import { sanityWrite } from '../lib/sanity'
+
+const tripTypeOptions = [
+  'Holiday',
+  'Honeymoon',
+  'Celebration',
+  'Family Vacation',
+  'Wellness Retreat',
+  'Romantic Escape',
+]
 
 const travelStyleOptions = [
   'Luxury',
@@ -40,6 +50,7 @@ const experienceOptions = [
 const budgetOptions = ['$$$', '$$$$', '$$$$$']
 
 function ClientIntakePage() {
+  const navigate = useNavigate()
   const [form, setForm] = useState({
     clientName: '',
     tripType: '',
@@ -53,6 +64,8 @@ function ClientIntakePage() {
     mustAvoid: '',
     notes: '',
   })
+  const [saving, setSaving] = useState(false)
+  const [saveMessage, setSaveMessage] = useState('')
 
   function updateField(name, value) {
     setForm((prev) => ({
@@ -75,6 +88,43 @@ function ClientIntakePage() {
     })
   }
 
+  const autoSummary = useMemo(() => {
+    const parts = []
+
+    if (form.clientName) parts.push(`${form.clientName} is planning`)
+    else parts.push('Client is planning')
+
+    if (form.tripType) parts.push(`a ${form.tripType.toLowerCase()}`)
+
+    if (form.tripLengthDays) parts.push(`for ${form.tripLengthDays} days`)
+
+    if (form.originCity) parts.push(`from ${form.originCity}`)
+
+    if (form.travellerCount) {
+      parts.push(`for ${form.travellerCount} traveller${Number(form.travellerCount) > 1 ? 's' : ''}`)
+    }
+
+    if (form.budgetBand) parts.push(`with a ${form.budgetBand} budget profile`)
+
+    if (form.preferredClimate.length) {
+      parts.push(`preferring ${form.preferredClimate.join(', ').toLowerCase()} climates`)
+    }
+
+    if (form.travelStyle.length) {
+      parts.push(`and a ${form.travelStyle.join(', ').toLowerCase()} travel style`)
+    }
+
+    if (form.desiredExperiences.length) {
+      parts.push(`with interest in ${form.desiredExperiences.join(', ').toLowerCase()}`)
+    }
+
+    if (form.mustAvoid.trim()) {
+      parts.push(`while avoiding ${form.mustAvoid}`)
+    }
+
+    return `${parts.join(' ')}.`
+  }, [form])
+
   const structuredPreview = useMemo(() => {
     return {
       title: form.clientName
@@ -94,13 +144,46 @@ function ClientIntakePage() {
         .map((item) => item.trim())
         .filter(Boolean),
       notes: form.notes,
+      autoSummary,
     }
-  }, [form])
+  }, [form, autoSummary])
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-    console.log('CLIENT INTAKE FORM:', structuredPreview)
-    alert('Client intake captured. Next step: save this into Sanity as a trip brief.')
+    setSaving(true)
+    setSaveMessage('')
+
+    try {
+      const doc = {
+        _type: 'tripBrief',
+        title: structuredPreview.title,
+        clientName: structuredPreview.clientName,
+        tripType: structuredPreview.tripType,
+        originCity: structuredPreview.originCity,
+        tripLengthDays: structuredPreview.tripLengthDays,
+        travellerCount: structuredPreview.travellerCount,
+        budgetBand: structuredPreview.budgetBand,
+        preferredClimate: structuredPreview.preferredClimate,
+        travelStyle: structuredPreview.travelStyle,
+        desiredExperiences: structuredPreview.desiredExperiences,
+        mustAvoid: structuredPreview.mustAvoid,
+        notes: structuredPreview.notes,
+        autoSummary: structuredPreview.autoSummary,
+        createdAt: new Date().toISOString(),
+      }
+
+      await sanityWrite.create(doc)
+
+      setSaveMessage('Client intake saved successfully.')
+      setTimeout(() => {
+        navigate('/recommendations')
+      }, 800)
+    } catch (err) {
+      console.error('CREATE ERROR:', err)
+      setSaveMessage(`Error saving trip brief: ${err.message}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -115,14 +198,19 @@ function ClientIntakePage() {
         <p className="eyebrow">LOQE</p>
         <h1>Client intake</h1>
         <p className="subtext">
-          Capture structured client preferences that will drive recommendations and itinerary logic.
+          A guided intake built to feel premium, effortless, and structured enough to drive strong recommendations.
         </p>
       </header>
 
       <div className="intake-layout">
         <form className="intake-form" onSubmit={handleSubmit}>
           <section className="form-section">
-            <h2>Core trip details</h2>
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Step 1</p>
+                <h2>Core trip details</h2>
+              </div>
+            </div>
 
             <div className="field-grid">
               <label className="field">
@@ -137,12 +225,17 @@ function ClientIntakePage() {
 
               <label className="field">
                 <span>Trip type</span>
-                <input
-                  type="text"
+                <select
                   value={form.tripType}
                   onChange={(e) => updateField('tripType', e.target.value)}
-                  placeholder="Honeymoon / Family Vacation / Celebration"
-                />
+                >
+                  <option value="">Select trip type</option>
+                  {tripTypeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label className="field">
@@ -195,7 +288,12 @@ function ClientIntakePage() {
           </section>
 
           <section className="form-section">
-            <h2>Preference fit</h2>
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Step 2</p>
+                <h2>Preference profile</h2>
+              </div>
+            </div>
 
             <div className="field-stack">
               <div className="field">
@@ -258,7 +356,12 @@ function ClientIntakePage() {
           </section>
 
           <section className="form-section">
-            <h2>Constraints and notes</h2>
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Step 3</p>
+                <h2>Refinement and notes</h2>
+              </div>
+            </div>
 
             <div className="field-stack">
               <label className="field">
@@ -284,16 +387,23 @@ function ClientIntakePage() {
           </section>
 
           <div className="form-actions">
-            <button type="submit" className="primary-button">
-              Capture intake
+            <button type="submit" className="primary-button" disabled={saving}>
+              {saving ? 'Saving...' : 'Save and generate recommendations'}
             </button>
           </div>
+
+          {saveMessage && <p className="save-message">{saveMessage}</p>}
         </form>
 
         <aside className="preview-panel">
-          <div className="preview-card">
+          <div className="preview-card luxury-preview">
+            <p className="preview-label">Auto-generated brief summary</p>
+            <h2>Client fit snapshot</h2>
+            <p className="preview-summary">{autoSummary}</p>
+
+            <div className="preview-divider" />
+
             <p className="preview-label">Structured preview</p>
-            <h2>{structuredPreview.title}</h2>
             <pre className="preview-json">
               {JSON.stringify(structuredPreview, null, 2)}
             </pre>
