@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
-import { sanityWrite } from '../lib/sanity'
 
 const tripTypeOptions = [
   'Holiday',
@@ -154,27 +153,22 @@ function ClientIntakePage() {
     setSaveMessage('')
 
     try {
-      const doc = {
-        _type: 'tripBrief',
-        title: structuredPreview.title,
-        clientName: structuredPreview.clientName,
-        tripType: structuredPreview.tripType,
-        originCity: structuredPreview.originCity,
-        tripLengthDays: structuredPreview.tripLengthDays,
-        travellerCount: structuredPreview.travellerCount,
-        budgetBand: structuredPreview.budgetBand,
-        preferredClimate: structuredPreview.preferredClimate,
-        travelStyle: structuredPreview.travelStyle,
-        desiredExperiences: structuredPreview.desiredExperiences,
-        mustAvoid: structuredPreview.mustAvoid,
-        notes: structuredPreview.notes,
-        autoSummary: structuredPreview.autoSummary,
-        createdAt: new Date().toISOString(),
+      const response = await fetch('/api/create-trip-brief', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(structuredPreview),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to save trip brief')
       }
 
-      await sanityWrite.create(doc)
-
       setSaveMessage('Client intake saved successfully.')
+
       setTimeout(() => {
         navigate('/recommendations')
       }, 800)
