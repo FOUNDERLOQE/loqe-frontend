@@ -227,9 +227,6 @@ function ClientIntakePage() {
             </div>
           </section>
 
-          <div style={{ background: 'red', color: 'white', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
-  IF YOU CAN SEE THIS, THE NEW CLIENT INTAKE PAGE IS LIVE
-</div>
           <ClientProfileSection
             value={clientProfile}
             onChange={setClientProfile}
