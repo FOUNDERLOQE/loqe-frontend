@@ -120,7 +120,7 @@ function ClientIntakePage() {
 
       <header className="hero luxury-hero">
         <div className="hero-badge">LŌQÉ Client Profiling</div>
-        <h1>CLIENT PROFILE TEST — LOQE</h1>
+        <h1>Build the client story before the itinerary</h1>
         <p className="subtext hero-subtext">
           One elegant intake flow combining trip context and the full LŌQÉ client profile,
           so recommendations come from depth, not guesswork.
@@ -227,6 +227,9 @@ function ClientIntakePage() {
             </div>
           </section>
 
+          <div style={{ background: 'red', color: 'white', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
+  IF YOU CAN SEE THIS, THE NEW CLIENT INTAKE PAGE IS LIVE
+</div>
           <ClientProfileSection
             value={clientProfile}
             onChange={setClientProfile}
