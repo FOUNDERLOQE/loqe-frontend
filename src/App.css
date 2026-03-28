@@ -477,3 +477,348 @@ a {
     align-items: flex-start;
   }
 }
+/* ---------- Client Profile Section ---------- */
+
+.profile-block {
+  padding: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.profile-block .section-head {
+  margin-bottom: 1rem;
+}
+
+.profile-block h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.profile-block .section-kicker {
+  margin-bottom: 0.35rem;
+}
+
+.annual-review-card {
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.secondary-button {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondary-button:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.secondary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Better spacing for long dossier sections */
+.form-section .profile-block + .profile-block {
+  margin-top: 1.5rem;
+}
+
+/* Improve large textarea rhythm inside Client Profile */
+.profile-block .field textarea,
+.annual-review-card .field textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.annual-review-card .field textarea[rows="1"] {
+  min-height: 48px;
+}
+
+/* Keep chip groups from looking cramped on large option sets */
+.profile-block .chip-group {
+  gap: 0.75rem;
+}
+
+/* Better spacing between repeated annual review entries */
+.field-stack .annual-review-card + .annual-review-card {
+  margin-top: 1rem;
+}
+
+/* Mobile refinement */
+@media (max-width: 768px) {
+  .profile-block {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+
+  .annual-review-card {
+    padding: 0.875rem;
+    border-radius: 14px;
+  }
+
+  .secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+/* ---------- Luxury page polish ---------- */
+
+.page-luxury {
+  background:
+    radial-gradient(circle at top left, rgba(194, 167, 122, 0.18), transparent 30%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 20%),
+    linear-gradient(180deg, #0e0e10 0%, #111216 100%);
+  min-height: 100vh;
+}
+
+.luxury-hero {
+  position: relative;
+  padding: 2rem 0 1rem;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid rgba(194, 167, 122, 0.3);
+  border-radius: 999px;
+  background: rgba(194, 167, 122, 0.08);
+  color: #d5c09b;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.hero-subtext {
+  max-width: 760px;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
+}
+
+.section-copy {
+  margin-top: 0.35rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.profile-block {
+  padding: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.profile-block .section-head {
+  margin-bottom: 1rem;
+}
+
+.profile-block h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.74);
+  font-weight: 500;
+}
+
+.profile-block .section-kicker {
+  margin-bottom: 0.35rem;
+}
+
+.annual-review-card {
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.secondary-button {
+  border: 1px solid rgba(194, 167, 122, 0.28);
+  background: rgba(194, 167, 122, 0.08);
+  color: #e3d2b5;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.secondary-button:hover {
+  border-color: rgba(194, 167, 122, 0.45);
+  background: rgba(194, 167, 122, 0.14);
+}
+
+.luxury-button {
+  background: linear-gradient(135deg, #c2a77a 0%, #e0c59a 100%);
+  color: #111216;
+  border: none;
+  box-shadow: 0 10px 30px rgba(194, 167, 122, 0.2);
+}
+
+.luxury-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px rgba(194, 167, 122, 0.26);
+}
+
+.preview-card.luxury-preview {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.preview-summary {
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.7;
+}
+
+.preview-json {
+  max-height: 560px;
+  overflow: auto;
+  border-radius: 16px;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.form-section .profile-block + .profile-block {
+  margin-top: 1.5rem;
+}
+
+.profile-block .field textarea,
+.annual-review-card .field textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.annual-review-card .field textarea[rows="1"] {
+  min-height: 48px;
+}
+
+.profile-block .chip-group {
+  gap: 0.75rem;
+}
+
+.field-stack .annual-review-card + .annual-review-card {
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .profile-block {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+
+  .annual-review-card {
+    padding: 0.875rem;
+    border-radius: 14px;
+  }
+
+  .secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+.destination-card {
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+}
+
+.destination-media {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.destination-image,
+.destination-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.destination-image-placeholder {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(194, 167, 122, 0.18), transparent 35%),
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+}
+
+.destination-card-body {
+  padding: 1.1rem;
+}
+
+.destination-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.destination-location {
+  margin-top: 0.35rem;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.95rem;
+}
+
+.destination-budget {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(194, 167, 122, 0.12);
+  border: 1px solid rgba(194, 167, 122, 0.2);
+  color: #dcc29a;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.destination-summary {
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.65;
+  margin-bottom: 1rem;
+}
+
+.destination-tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.destination-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.84rem;
+}
+
+.destination-tag.secondary {
+  background: rgba(194, 167, 122, 0.1);
+  color: #e2cfad;
+}

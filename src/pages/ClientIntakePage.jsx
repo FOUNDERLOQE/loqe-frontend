@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
+import ClientProfileSection from '../components/ClientProfileSection'
 
 const tripTypeOptions = [
   'Holiday',
@@ -10,46 +11,11 @@ const tripTypeOptions = [
   'Romantic Escape',
 ]
 
-const travelStyleOptions = [
-  'Luxury',
-  'Ultra Luxury',
-  'Adventure',
-  'Wellness',
-  'Slow Travel',
-  'Cultural',
-  'Nature',
-  'Romantic',
-  'Family-Friendly',
-  'Food-Focused',
-  'Offbeat',
-  'Beach',
-  'Mountain',
-  'City',
-]
-
-const climateOptions = ['Cold', 'Warm', 'Tropical', 'Mild', 'Snow']
-
-const experienceOptions = [
-  'Fine Dining',
-  'Spa',
-  'Beach Time',
-  'Yachting',
-  'Hiking',
-  'Wildlife',
-  'Museums',
-  'Art',
-  'Local Immersion',
-  'Shopping',
-  'Nightlife',
-  'Road Trips',
-  'Skiing',
-  'Photography',
-]
-
 const budgetOptions = ['$$$', '$$$$', '$$$$$']
 
 function ClientIntakePage() {
   const navigate = useNavigate()
+
   const [form, setForm] = useState({
     clientName: '',
     tripType: '',
@@ -57,12 +23,10 @@ function ClientIntakePage() {
     tripLengthDays: '',
     travellerCount: '',
     budgetBand: '',
-    preferredClimate: [],
-    travelStyle: [],
-    desiredExperiences: [],
-    mustAvoid: '',
     notes: '',
   })
+
+  const [clientProfile, setClientProfile] = useState({})
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
 
@@ -71,20 +35,6 @@ function ClientIntakePage() {
       ...prev,
       [name]: value,
     }))
-  }
-
-  function toggleArrayValue(fieldName, value) {
-    setForm((prev) => {
-      const currentValues = prev[fieldName]
-      const exists = currentValues.includes(value)
-
-      return {
-        ...prev,
-        [fieldName]: exists
-          ? currentValues.filter((item) => item !== value)
-          : [...currentValues, value],
-      }
-    })
   }
 
   const autoSummary = useMemo(() => {
@@ -103,22 +53,8 @@ function ClientIntakePage() {
       parts.push(`for ${form.travellerCount} traveller${Number(form.travellerCount) > 1 ? 's' : ''}`)
     }
 
-    if (form.budgetBand) parts.push(`with a ${form.budgetBand} budget profile`)
-
-    if (form.preferredClimate.length) {
-      parts.push(`preferring ${form.preferredClimate.join(', ').toLowerCase()} climates`)
-    }
-
-    if (form.travelStyle.length) {
-      parts.push(`and a ${form.travelStyle.join(', ').toLowerCase()} travel style`)
-    }
-
-    if (form.desiredExperiences.length) {
-      parts.push(`with interest in ${form.desiredExperiences.join(', ').toLowerCase()}`)
-    }
-
-    if (form.mustAvoid.trim()) {
-      parts.push(`while avoiding ${form.mustAvoid}`)
+    if (form.budgetBand) {
+      parts.push(`with a ${form.budgetBand} budget profile`)
     }
 
     return `${parts.join(' ')}.`
@@ -135,17 +71,11 @@ function ClientIntakePage() {
       tripLengthDays: Number(form.tripLengthDays) || null,
       travellerCount: Number(form.travellerCount) || null,
       budgetBand: form.budgetBand,
-      preferredClimate: form.preferredClimate,
-      travelStyle: form.travelStyle,
-      desiredExperiences: form.desiredExperiences,
-      mustAvoid: form.mustAvoid
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean),
       notes: form.notes,
       autoSummary,
+      clientProfile,
     }
-  }, [form, autoSummary])
+  }, [form, autoSummary, clientProfile])
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -167,7 +97,7 @@ function ClientIntakePage() {
         throw new Error(result.error || 'Failed to save trip brief')
       }
 
-      setSaveMessage('Client intake saved successfully.')
+      setSaveMessage('Client profile saved successfully.')
 
       setTimeout(() => {
         navigate('/recommendations')
@@ -181,28 +111,32 @@ function ClientIntakePage() {
   }
 
   return (
-    <div className="page">
+    <div className="page page-luxury">
       <div className="page-topbar">
         <Link to="/" className="back-link">
           ← Back to home
         </Link>
       </div>
 
-      <header className="hero">
-        <p className="eyebrow">LOQE</p>
-        <h1>Client intake</h1>
-        <p className="subtext">
-          A guided intake built to feel premium, effortless, and structured enough to drive strong recommendations.
+      <header className="hero luxury-hero">
+        <div className="hero-badge">LŌQÉ Client Profiling</div>
+        <h1>Build the client story before the itinerary</h1>
+        <p className="subtext hero-subtext">
+          One elegant intake flow combining trip context and the full LŌQÉ client profile,
+          so recommendations come from depth, not guesswork.
         </p>
       </header>
 
       <div className="intake-layout">
         <form className="intake-form" onSubmit={handleSubmit}>
-          <section className="form-section">
+          <section className="form-section glass-card">
             <div className="section-head">
               <div>
                 <p className="section-kicker">Step 1</p>
-                <h2>Core trip details</h2>
+                <h2>Trip Context</h2>
+                <p className="section-copy">
+                  Just the key trip facts needed to guide recommendations.
+                </p>
               </div>
             </div>
 
@@ -279,109 +213,27 @@ function ClientIntakePage() {
                 </select>
               </label>
             </div>
-          </section>
-
-          <section className="form-section">
-            <div className="section-head">
-              <div>
-                <p className="section-kicker">Step 2</p>
-                <h2>Preference profile</h2>
-              </div>
-            </div>
 
             <div className="field-stack">
-              <div className="field">
-                <span>Preferred climate</span>
-                <div className="chip-group">
-                  {climateOptions.map((option) => {
-                    const active = form.preferredClimate.includes(option)
-                    return (
-                      <button
-                        type="button"
-                        key={option}
-                        className={`chip ${active ? 'chip-active' : ''}`}
-                        onClick={() => toggleArrayValue('preferredClimate', option)}
-                      >
-                        {option}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="field">
-                <span>Travel style</span>
-                <div className="chip-group">
-                  {travelStyleOptions.map((option) => {
-                    const active = form.travelStyle.includes(option)
-                    return (
-                      <button
-                        type="button"
-                        key={option}
-                        className={`chip ${active ? 'chip-active' : ''}`}
-                        onClick={() => toggleArrayValue('travelStyle', option)}
-                      >
-                        {option}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="field">
-                <span>Desired experiences</span>
-                <div className="chip-group">
-                  {experienceOptions.map((option) => {
-                    const active = form.desiredExperiences.includes(option)
-                    return (
-                      <button
-                        type="button"
-                        key={option}
-                        className={`chip ${active ? 'chip-active' : ''}`}
-                        onClick={() => toggleArrayValue('desiredExperiences', option)}
-                      >
-                        {option}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="form-section">
-            <div className="section-head">
-              <div>
-                <p className="section-kicker">Step 3</p>
-                <h2>Refinement and notes</h2>
-              </div>
-            </div>
-
-            <div className="field-stack">
-              <label className="field">
-                <span>Must avoid</span>
-                <textarea
-                  rows="4"
-                  value={form.mustAvoid}
-                  onChange={(e) => updateField('mustAvoid', e.target.value)}
-                  placeholder="Crowded cities, red-eye flights, excessive transfers"
-                />
-              </label>
-
               <label className="field">
                 <span>Planner notes</span>
                 <textarea
-                  rows="6"
+                  rows="5"
                   value={form.notes}
                   onChange={(e) => updateField('notes', e.target.value)}
-                  placeholder="Add nuances from the client conversation here."
+                  placeholder="Anything useful from the conversation that should influence recommendations."
                 />
               </label>
             </div>
           </section>
 
+          <ClientProfileSection
+            value={clientProfile}
+            onChange={setClientProfile}
+          />
+
           <div className="form-actions">
-            <button type="submit" className="primary-button" disabled={saving}>
+            <button type="submit" className="primary-button luxury-button" disabled={saving}>
               {saving ? 'Saving...' : 'Save and generate recommendations'}
             </button>
           </div>
@@ -390,7 +242,7 @@ function ClientIntakePage() {
         </form>
 
         <aside className="preview-panel">
-          <div className="preview-card luxury-preview">
+          <div className="preview-card luxury-preview glass-card">
             <p className="preview-label">Auto-generated brief summary</p>
             <h2>Client fit snapshot</h2>
             <p className="preview-summary">{autoSummary}</p>
