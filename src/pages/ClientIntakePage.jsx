@@ -44,13 +44,13 @@ function ClientIntakePage() {
     else parts.push('Client is planning')
 
     if (form.tripType) parts.push(`a ${form.tripType.toLowerCase()}`)
-
     if (form.tripLengthDays) parts.push(`for ${form.tripLengthDays} days`)
-
     if (form.originCity) parts.push(`from ${form.originCity}`)
 
     if (form.travellerCount) {
-      parts.push(`for ${form.travellerCount} traveller${Number(form.travellerCount) > 1 ? 's' : ''}`)
+      parts.push(
+        `for ${form.travellerCount} traveller${Number(form.travellerCount) > 1 ? 's' : ''}`
+      )
     }
 
     if (form.budgetBand) {
@@ -91,7 +91,17 @@ function ClientIntakePage() {
         body: JSON.stringify(structuredPreview),
       })
 
-      const result = await response.json()
+      const rawText = await response.text()
+      let result = {}
+
+      try {
+        result = rawText ? JSON.parse(rawText) : {}
+      } catch (parseError) {
+        console.error('NON_JSON_RESPONSE:', rawText)
+        throw new Error(
+          `API did not return valid JSON. Raw response: ${rawText || 'empty response'}`
+        )
+      }
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to save trip brief')
@@ -233,7 +243,11 @@ function ClientIntakePage() {
           />
 
           <div className="form-actions">
-            <button type="submit" className="primary-button luxury-button" disabled={saving}>
+            <button
+              type="submit"
+              className="primary-button luxury-button"
+              disabled={saving}
+            >
               {saving ? 'Saving...' : 'Save and generate recommendations'}
             </button>
           </div>

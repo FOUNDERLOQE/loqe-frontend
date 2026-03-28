@@ -1,13 +1,9 @@
-import { createImageUrlBuilder } from '@sanity/image-url'
-import { client } from '../lib/sanity'
-
-const builder = createImageUrlBuilder(client)
-
-function urlFor(source) {
-  return builder.image(source)
-}
+import { useRef } from 'react'
+import { urlFor } from '../lib/image'
 
 export default function DestinationCard({ destination }) {
+  const videoRef = useRef(null)
+
   const title = destination?.title || ''
   const country = destination?.country || ''
   const region = destination?.region || ''
@@ -15,28 +11,58 @@ export default function DestinationCard({ destination }) {
   const heroImage = destination?.heroImage || null
   const heroVideoUrl = destination?.heroVideoUrl || ''
   const budgetBand = destination?.budgetBand || ''
-  const vibeTags = destination?.vibeTags || []
-  const suitableFor = destination?.suitableFor || []
+  const vibeTags = Array.isArray(destination?.vibeTags) ? destination.vibeTags : []
+  const suitableFor = Array.isArray(destination?.suitableFor) ? destination.suitableFor : []
+
+  let imageUrl = ''
+  try {
+    imageUrl = heroImage ? urlFor(heroImage).width(800).height(500).url() : ''
+  } catch (error) {
+    console.error('Invalid heroImage for destination:', title, heroImage, error)
+  }
+
+  function handleMouseEnter() {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0
+      videoRef.current.play().catch(() => {})
+    }
+  }
+
+  function handleMouseLeave() {
+    if (videoRef.current) {
+      videoRef.current.pause()
+      videoRef.current.currentTime = 0
+    }
+  }
 
   return (
-    <article className="destination-card">
+    <article
+      className="destination-card"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className="destination-media">
-        {heroVideoUrl ? (
+        {imageUrl && (
+          <img
+            className={`destination-image ${heroVideoUrl ? 'with-video' : ''}`}
+            src={imageUrl}
+            alt={title}
+          />
+        )}
+
+        {heroVideoUrl && (
           <video
-            className="destination-video"
+            ref={videoRef}
+            className="destination-video hover-video"
             src={heroVideoUrl}
-            autoPlay
             muted
             loop
             playsInline
+            preload="metadata"
           />
-        ) : heroImage ? (
-          <img
-            className="destination-image"
-            src={urlFor(heroImage).width(800).height(500).url()}
-            alt={title}
-          />
-        ) : (
+        )}
+
+        {!imageUrl && !heroVideoUrl && (
           <div className="destination-image-placeholder" />
         )}
       </div>

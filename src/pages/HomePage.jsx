@@ -9,30 +9,35 @@ function HomePage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    sanity
-      .fetch(`
-        *[_type == "destination"] | order(title asc){
-          _id,
-          title,
-          slug,
-          country,
-          region,
-          summary,
-          heroImage,
-          budgetBand,
-          vibeTags,
-          suitableFor
-        }
-      `)
-      .then((data) => {
+    async function loadDestinations() {
+      try {
+        const data = await sanity.fetch(`
+          *[_type == "destination"] | order(title asc){
+            _id,
+            title,
+            "slug": slug.current,
+            country,
+            region,
+            summary,
+            heroImage,
+            heroVideoUrl,
+            budgetBand,
+            vibeTags,
+            suitableFor
+          }
+        `)
+
+        console.log('SANITY DATA:', data)
         setDestinations(data)
+      } catch (err) {
+        console.error('SANITY FULL ERROR:', err)
+        setError(`Failed to load destinations: ${err?.message || 'Unknown error'}`)
+      } finally {
         setLoading(false)
-      })
-      .catch((err) => {
-        console.error('SANITY ERROR:', err)
-        setError(`Failed to load destinations: ${err.message}`)
-        setLoading(false)
-      })
+      }
+    }
+
+    loadDestinations()
   }, [])
 
   if (loading) {
