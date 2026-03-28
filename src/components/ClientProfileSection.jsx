@@ -71,6 +71,9 @@ function ClientProfileSection({ value, onChange }) {
 
   return (
     <section className="form-section glass-card">
+      <div style={{ background: 'blue', color: 'white', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
+        CLIENT PROFILE COMPONENT IS RENDERING
+      </div>
       <div className="section-head">
         <div>
           <p className="section-kicker">Step 2</p>
