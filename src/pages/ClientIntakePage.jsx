@@ -120,7 +120,7 @@ function ClientIntakePage() {
 
       <header className="hero luxury-hero">
         <div className="hero-badge">LŌQÉ Client Profiling</div>
-        <h1>Build the client story before the itinerary</h1>
+        <h1>Build the client story before the itinerary — LOQE</h1>
         <p className="subtext hero-subtext">
           One elegant intake flow combining trip context and the full LŌQÉ client profile,
           so recommendations come from depth, not guesswork.
