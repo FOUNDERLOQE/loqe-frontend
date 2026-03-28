@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { urlFor } from '../lib/image'
 
 export default function DestinationCard({ destination }) {
@@ -14,17 +14,26 @@ export default function DestinationCard({ destination }) {
   const vibeTags = Array.isArray(destination?.vibeTags) ? destination.vibeTags : []
   const suitableFor = Array.isArray(destination?.suitableFor) ? destination.suitableFor : []
 
-  let imageUrl = ''
-  try {
-    imageUrl = heroImage ? urlFor(heroImage).width(800).height(500).url() : ''
-  } catch (error) {
-    console.error('Invalid heroImage for destination:', title, heroImage, error)
-  }
+  const imageUrl = useMemo(() => {
+    try {
+      return heroImage ? urlFor(heroImage).width(800).height(500).url() : ''
+    } catch (error) {
+      console.error('Invalid heroImage for destination:', title, heroImage, error)
+      return ''
+    }
+  }, [heroImage, title])
 
   function handleMouseEnter() {
-    if (videoRef.current) {
+    console.log('VIDEO DEBUG', {
+      title,
+      heroVideoUrl,
+    })
+
+    if (videoRef.current && heroVideoUrl) {
       videoRef.current.currentTime = 0
-      videoRef.current.play().catch(() => {})
+      videoRef.current.play().catch((error) => {
+        console.error('VIDEO PLAY ERROR', { title, heroVideoUrl, error })
+      })
     }
   }
 

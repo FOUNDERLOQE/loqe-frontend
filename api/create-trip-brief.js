@@ -1,3 +1,10 @@
+// IMPORTANT:
+// This schema and API payload must stay aligned.
+// If you add, remove, or rename fields here,
+// update BOTH:
+// 1) schemaTypes/clientTravelPersonality.js
+// 2) api/create-trip-brief.js
+// 3) frontend intake payload if needed
 import { createClient } from '@sanity/client'
 
 const sanityWrite = createClient({
@@ -7,54 +14,19 @@ const sanityWrite = createClient({
     process.env.SANITY_API_VERSION ||
     process.env.VITE_SANITY_API_VERSION ||
     '2024-01-01',
-  useCdn: false,
   token: process.env.SANITY_WRITE_TOKEN,
+  useCdn: false,
 })
-
-function slugify(value = '') {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 96)
-}
-
-function toClientType(payload) {
-  const count = Number(payload?.travellerCount || 1)
-  const tripType = (payload?.tripType || '').toLowerCase()
-
-  if (tripType.includes('family')) return 'family'
-  if (count === 1) return 'individual'
-  if (count === 2) return 'couple'
-  if (count > 2) return 'group'
-  return 'individual'
-}
-
-function buildSignalTags(payload) {
-  const profile = payload?.clientProfile || {}
-  const tags = []
-
-  if ((profile.tripVibeWords || '').toLowerCase().includes('romantic')) tags.push('romantic')
-  if ((profile.tripVibeWords || '').toLowerCase().includes('spiritual')) tags.push('spiritual')
-  if ((profile.tripVibeWords || '').toLowerCase().includes('indulgent')) tags.push('luxury')
-  if ((profile.travelEnergyDrink || '').toLowerCase().includes('restorative')) tags.push('wellness')
-  if ((profile.travelEnergyDrink || '').toLowerCase().includes('energetic')) tags.push('high-energy')
-  if ((profile.wouldYouRatherOceanOrMountain || '') === 'Ocean waves') tags.push('beach')
-  if ((profile.wouldYouRatherOceanOrMountain || '') === 'Mountain air') tags.push('mountain')
-  if ((profile.wouldYouRatherStreetFoodOrMichelin || '') === 'Michelin star dining') tags.push('fine-dining')
-  if ((profile.wouldYouRatherStreetFoodOrMichelin || '') === 'Street food') tags.push('local-food')
-  if ((profile.travelExcitement || []).includes('Luxury indulgence')) tags.push('luxury')
-  if ((profile.travelExcitement || []).includes('Wellness & retreats')) tags.push('wellness')
-  if ((profile.travelExcitement || []).includes('Cultural immersion')) tags.push('culture')
-  if ((profile.travelExcitement || []).includes('Adventure sports')) tags.push('adventure')
-
-  return [...new Set(tags)]
-}
 
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json')
+
+  console.log('ENV CHECK', {
+    hasProjectId: Boolean(process.env.SANITY_PROJECT_ID || process.env.VITE_SANITY_PROJECT_ID),
+    hasDataset: Boolean(process.env.SANITY_DATASET || process.env.VITE_SANITY_DATASET),
+    hasApiVersion: Boolean(process.env.SANITY_API_VERSION || process.env.VITE_SANITY_API_VERSION),
+    hasWriteToken: Boolean(process.env.SANITY_WRITE_TOKEN),
+  })
 
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -86,9 +58,9 @@ export default async function handler(req, res) {
     }
 
     const payload = req.body || {}
-    const profile = payload.clientProfile || {}
 
     const {
+      title,
       clientName,
       tripType,
       originCity,
@@ -97,85 +69,38 @@ export default async function handler(req, res) {
       budgetBand,
       notes,
       autoSummary,
+      clientProfile,
     } = payload
 
-    const title = clientName
-      ? `${clientName} - Travel Brief`
-      : 'Untitled Travel Brief'
-
-    let tripBriefResult = null
-    let clientProfileResult = null
-
-    // WRITE 1: tripBrief
-    try {
-      const tripBriefDoc = {
-        _type: 'tripBrief',
-        title,
-        clientName: clientName || '',
-        tripType: tripType || '',
-        originCity: originCity || '',
-        tripLengthDays: Number(tripLengthDays) || null,
-        travellerCount: Number(travellerCount) || null,
-        budgetBand: budgetBand || '',
-        notes: notes || '',
-        autoSummary: autoSummary || '',
-        createdAt: new Date().toISOString(),
-      }
-
-      tripBriefResult = await sanityWrite.create(tripBriefDoc)
-    } catch (tripBriefError) {
-      console.error('TRIP_BRIEF_CREATE_ERROR', tripBriefError)
-      return res.status(500).json({
-        success: false,
-        step: 'tripBrief',
-        error: tripBriefError?.message || 'Failed while creating tripBrief',
-      })
+    const doc = {
+      _type: 'clientTravelPersonality',
+      title: title || (clientName ? `${clientName} - Travel Brief` : 'Untitled Travel Brief'),
+      clientName: clientName || '',
+      tripType: tripType || '',
+      originCity: originCity || '',
+      tripLengthDays: Number(tripLengthDays) || null,
+      travellerCount: Number(travellerCount) || null,
+      budgetBand: budgetBand || '',
+      notes: notes || '',
+      autoSummary: autoSummary || '',
+      clientProfileSnapshot: JSON.stringify(clientProfile || {}, null, 2),
+      status: 'new',
+      submittedAt: new Date().toISOString(),
     }
 
-    // WRITE 2: clientProfile
-    try {
-      const fullName = clientName || profile.greetName || 'Untitled Client'
+    console.log('ABOUT TO CREATE clientTravelPersonality', doc)
 
-      const clientProfileDoc = {
-        _type: 'clientProfile',
-        fullName,
-        slug: {
-          _type: 'slug',
-          current: slugify(fullName),
-        },
-        cityOfResidence: profile.currentLocation || originCity || '',
-        clientType: toClientType(payload),
-        relationshipManagerNotes: notes || '',
-        tripType: tripType || '',
-        tripLengthDays: Number(tripLengthDays) || null,
-        travellerCount: Number(travellerCount) || null,
-        budgetBand: budgetBand || '',
-        originCity: originCity || '',
-        autoSummary: autoSummary || '',
-        travelSignalTags: buildSignalTags(payload),
-        profilePayload: profile,
-        createdAt: new Date().toISOString(),
-        status: 'active',
-      }
+    const created = await sanityWrite.create(doc)
 
-      clientProfileResult = await sanityWrite.create(clientProfileDoc)
-    } catch (clientProfileError) {
-      console.error('CLIENT_PROFILE_CREATE_ERROR', clientProfileError)
-      return res.status(500).json({
-        success: false,
-        step: 'clientProfile',
-        error: clientProfileError?.message || 'Failed while creating clientProfile',
-        tripBriefId: tripBriefResult?._id || null,
-      })
-    }
+    console.log('CREATED clientTravelPersonality RESPONSE', created)
 
     return res.status(200).json({
       success: true,
-      tripBriefId: tripBriefResult._id,
-      clientProfileId: clientProfileResult._id,
+      id: created._id,
     })
   } catch (error) {
     console.error('CREATE_TRIP_BRIEF_ERROR', error)
+
     return res.status(500).json({
       success: false,
       error: error?.message || 'Failed to create trip brief',

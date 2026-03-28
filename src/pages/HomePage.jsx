@@ -20,10 +20,17 @@ function HomePage() {
             region,
             summary,
             heroImage,
-            heroVideoUrl,
+            "heroVideoUrl": heroVideo.asset->url,
             budgetBand,
             vibeTags,
-            suitableFor
+            suitableFor,
+            destinationTypes,
+            bestTripTypes,
+            climateTags,
+            paceTags,
+            experienceTags,
+            idealTripLength,
+            travelLogistics
           }
         `)
 
