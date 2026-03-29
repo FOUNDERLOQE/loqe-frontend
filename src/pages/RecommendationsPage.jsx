@@ -226,7 +226,10 @@ function RecommendationsPage() {
 
           <div className="preview-divider" />
 
-          <div className="form-actions">
+          <div
+            className="form-actions"
+            style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}
+          >
             <button
               type="button"
               className="primary-button luxury-button"
@@ -235,6 +238,10 @@ function RecommendationsPage() {
             >
               {savingRecommendations ? 'Saving recommendations...' : 'Save top recommendations'}
             </button>
+
+            <Link to="/itinerary-builder" className="secondary-button">
+              Build itinerary draft
+            </Link>
           </div>
 
           {saveMessage && <p className="save-message">{saveMessage}</p>}
