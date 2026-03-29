@@ -10,12 +10,15 @@ function RecommendationsPage() {
   const [profileDoc, setProfileDoc] = useState(null)
   const [signals, setSignals] = useState(null)
   const [recommendations, setRecommendations] = useState([])
+  const [savingRecommendations, setSavingRecommendations] = useState(false)
+  const [saveMessage, setSaveMessage] = useState('')
 
   useEffect(() => {
     async function loadRecommendations() {
       try {
         setLoading(true)
         setError('')
+        setSaveMessage('')
 
         const latestProfiles = await sanity.fetch(`
           *[_type == "clientTravelPersonality"] | order(submittedAt desc)[0...1]{
@@ -31,7 +34,8 @@ function RecommendationsPage() {
             autoSummary,
             clientProfileSnapshot,
             status,
-            submittedAt
+            submittedAt,
+            recommendationSnapshots
           }
         `)
 
@@ -104,6 +108,53 @@ function RecommendationsPage() {
     loadRecommendations()
   }, [])
 
+  async function handleSaveRecommendations() {
+    try {
+      if (!profileDoc?._id) {
+        throw new Error('No client profile selected to save recommendations against.')
+      }
+
+      setSavingRecommendations(true)
+      setSaveMessage('')
+
+      const topRecommendations = recommendations.slice(0, 5).map((item) => ({
+        destinationId: item._id,
+        title: item.title,
+        slug: item.slug || '',
+        country: item.country || '',
+        region: item.region || '',
+        budgetBand: item.budgetBand || '',
+        recommendationScore: item.recommendationScore || 0,
+        matchReasons: Array.isArray(item.matchReasons) ? item.matchReasons.slice(0, 5) : [],
+        matchWarnings: Array.isArray(item.matchWarnings) ? item.matchWarnings : [],
+      }))
+
+      const response = await fetch('/api/save-recommendations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profileId: profileDoc._id,
+          recommendations: topRecommendations,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to save recommendations')
+      }
+
+      setSaveMessage('Recommendations saved to Sanity successfully.')
+    } catch (err) {
+      console.error('SAVE_RECOMMENDATIONS_CLIENT_ERROR', err)
+      setSaveMessage(`Error saving recommendations: ${err?.message || 'Unknown error'}`)
+    } finally {
+      setSavingRecommendations(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="page page-luxury">
@@ -170,7 +221,23 @@ function RecommendationsPage() {
             <p><strong>Origin city:</strong> {profileDoc.originCity || '—'}</p>
             <p><strong>Trip length:</strong> {profileDoc.tripLengthDays || '—'} days</p>
             <p><strong>Travellers:</strong> {profileDoc.travellerCount || '—'}</p>
+            <p><strong>Status:</strong> {profileDoc.status || '—'}</p>
           </div>
+
+          <div className="preview-divider" />
+
+          <div className="form-actions">
+            <button
+              type="button"
+              className="primary-button luxury-button"
+              onClick={handleSaveRecommendations}
+              disabled={savingRecommendations}
+            >
+              {savingRecommendations ? 'Saving recommendations...' : 'Save top recommendations'}
+            </button>
+          </div>
+
+          {saveMessage && <p className="save-message">{saveMessage}</p>}
         </section>
       )}
 
