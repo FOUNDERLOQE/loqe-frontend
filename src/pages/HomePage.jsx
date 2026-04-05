@@ -79,6 +79,9 @@ function HomePage() {
           <Link to="/recommendations" className="secondary-button">
             View recommendations
           </Link>
+          <Link to="/client-profiles" className="secondary-button">
+            View saved client profiles
+          </Link>
         </div>
       </header>
 
