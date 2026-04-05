@@ -4,7 +4,7 @@ export function scoreDestinations(destinations, signals) {
       let score = 0
       const vibeTags = destination?.vibeTags || []
       const suitableFor = destination?.suitableFor || []
-      const allTags = [...vibeTags, ...suitableFor].map((tag) => tag.toLowerCase())
+      const allTags = [...vibeTags, ...suitableFor].map((tag) => String(tag).toLowerCase())
 
       signals.preferredTags.forEach((tag) => {
         if (allTags.some((item) => item.includes(tag))) score += 12
