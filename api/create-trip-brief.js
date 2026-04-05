@@ -1,13 +1,6 @@
-// IMPORTANT:
-// This schema and API payload must stay aligned.
-// If you add, remove, or rename fields here,
-// update BOTH:
-// 1) schemaTypes/clientTravelPersonality.js
-// 2) api/create-trip-brief.js
-// 3) frontend intake payload if needed
 import { createClient } from '@sanity/client'
 
-const sanityWrite = createClient({
+const client = createClient({
   projectId: process.env.SANITY_PROJECT_ID || process.env.VITE_SANITY_PROJECT_ID,
   dataset: process.env.SANITY_DATASET || process.env.VITE_SANITY_DATASET,
   apiVersion:
@@ -21,16 +14,9 @@ const sanityWrite = createClient({
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json')
 
-  console.log('ENV CHECK', {
-    hasProjectId: Boolean(process.env.SANITY_PROJECT_ID || process.env.VITE_SANITY_PROJECT_ID),
-    hasDataset: Boolean(process.env.SANITY_DATASET || process.env.VITE_SANITY_DATASET),
-    hasApiVersion: Boolean(process.env.SANITY_API_VERSION || process.env.VITE_SANITY_API_VERSION),
-    hasWriteToken: Boolean(process.env.SANITY_WRITE_TOKEN),
-  })
-
   if (req.method !== 'POST') {
     return res.status(405).json({
-      success: false,
+      ok: false,
       error: 'Method not allowed',
     })
   }
@@ -38,72 +24,41 @@ export default async function handler(req, res) {
   try {
     if (!process.env.SANITY_WRITE_TOKEN) {
       return res.status(500).json({
-        success: false,
+        ok: false,
         error: 'Missing SANITY_WRITE_TOKEN in environment variables',
       })
     }
 
-    if (!(process.env.SANITY_PROJECT_ID || process.env.VITE_SANITY_PROJECT_ID)) {
-      return res.status(500).json({
-        success: false,
-        error: 'Missing SANITY_PROJECT_ID or VITE_SANITY_PROJECT_ID',
-      })
-    }
-
-    if (!(process.env.SANITY_DATASET || process.env.VITE_SANITY_DATASET)) {
-      return res.status(500).json({
-        success: false,
-        error: 'Missing SANITY_DATASET or VITE_SANITY_DATASET',
-      })
-    }
-
-    const payload = req.body || {}
-
-    const {
-      title,
-      clientName,
-      tripType,
-      originCity,
-      tripLengthDays,
-      travellerCount,
-      budgetBand,
-      notes,
-      autoSummary,
-      clientProfile,
-    } = payload
+    const body = req.body || {}
 
     const doc = {
       _type: 'clientTravelPersonality',
-      title: title || (clientName ? `${clientName} - Travel Brief` : 'Untitled Travel Brief'),
-      clientName: clientName || '',
-      tripType: tripType || '',
-      originCity: originCity || '',
-      tripLengthDays: Number(tripLengthDays) || null,
-      travellerCount: Number(travellerCount) || null,
-      budgetBand: budgetBand || '',
-      notes: notes || '',
-      autoSummary: autoSummary || '',
-      clientProfileSnapshot: JSON.stringify(clientProfile || {}, null, 2),
+      title: body.title || (body.clientName ? `${body.clientName} - Travel Brief` : 'Untitled Travel Brief'),
+      clientName: body.clientName || '',
+      tripType: body.tripType || '',
+      originCity: body.originCity || '',
+      tripLengthDays: Number(body.tripLengthDays || 0) || null,
+      travellerCount: Number(body.travellerCount || 0) || null,
+      budgetBand: body.budgetBand || '',
+      notes: body.notes || '',
+      autoSummary: body.autoSummary || '',
+      clientProfileSnapshot: body.clientProfileSnapshot || '',
       status: 'new',
       submittedAt: new Date().toISOString(),
     }
 
-    console.log('ABOUT TO CREATE clientTravelPersonality', doc)
-
-    const created = await sanityWrite.create(doc)
-
-    console.log('CREATED clientTravelPersonality RESPONSE', created)
+    const created = await client.create(doc)
 
     return res.status(200).json({
-      success: true,
+      ok: true,
       id: created._id,
     })
   } catch (error) {
-    console.error('CREATE_TRIP_BRIEF_ERROR', error)
+    console.error('Save clientTravelPersonality failed:', error)
 
     return res.status(500).json({
-      success: false,
-      error: error?.message || 'Failed to create trip brief',
+      ok: false,
+      error: error.message || 'Unknown error',
     })
   }
 }
