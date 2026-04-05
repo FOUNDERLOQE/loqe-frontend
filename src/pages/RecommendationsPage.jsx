@@ -68,28 +68,18 @@ function getTopReasons(destination, signals) {
   )
 
   signals.preferredTags.forEach((tag) => {
-    if (
-      reasons.length < 3 &&
-      allTags.some((item) => item.includes(tag))
-    ) {
+    if (reasons.length < 3 && allTags.some((item) => item.includes(tag))) {
       reasons.push(`Strong fit for ${tag}`)
     }
   })
 
   signals.destinationTypes.forEach((tag) => {
-    if (
-      reasons.length < 3 &&
-      allTags.some((item) => item.includes(tag))
-    ) {
+    if (reasons.length < 3 && allTags.some((item) => item.includes(tag))) {
       reasons.push(`Matches preferred ${tag} setting`)
     }
   })
 
-  if (
-    reasons.length < 3 &&
-    signals.budgetBand &&
-    destination?.budgetBand === signals.budgetBand
-  ) {
+  if (reasons.length < 3 && signals.budgetBand && destination?.budgetBand === signals.budgetBand) {
     reasons.push(`Aligned with ${signals.budgetBand} budget band`)
   }
 
@@ -131,10 +121,7 @@ function getWarnings(destination, signals) {
   )
 
   signals.avoidTags.forEach((tag) => {
-    if (
-      warnings.length < 2 &&
-      allTags.some((item) => item.includes(tag))
-    ) {
+    if (warnings.length < 2 && allTags.some((item) => item.includes(tag))) {
       warnings.push(`Potential mismatch around ${tag}`)
     }
   })
@@ -340,9 +327,7 @@ function RecommendationsPage() {
             <div className="destination-tag-group">
               {(signals.preferredTags || []).length > 0 ? (
                 signals.preferredTags.slice(0, 8).map((tag) => (
-                  <span key={tag} className="destination-tag">
-                    {tag}
-                  </span>
+                  <span key={tag} className="destination-tag">{tag}</span>
                 ))
               ) : (
                 <span className="destination-tag">No strong tags yet</span>
@@ -355,9 +340,7 @@ function RecommendationsPage() {
             <div className="destination-tag-group">
               {(signals.avoidTags || []).length > 0 ? (
                 signals.avoidTags.slice(0, 6).map((tag) => (
-                  <span key={tag} className="destination-tag secondary">
-                    {tag}
-                  </span>
+                  <span key={tag} className="destination-tag secondary">{tag}</span>
                 ))
               ) : (
                 <span className="destination-tag">No active warnings</span>
@@ -370,9 +353,7 @@ function RecommendationsPage() {
             <div className="destination-tag-group">
               {(signals.destinationTypes || []).length > 0 ? (
                 signals.destinationTypes.slice(0, 6).map((tag) => (
-                  <span key={tag} className="destination-tag">
-                    {tag}
-                  </span>
+                  <span key={tag} className="destination-tag">{tag}</span>
                 ))
               ) : (
                 <span className="destination-tag">No specific setting yet</span>
@@ -498,9 +479,7 @@ function RecommendationsPage() {
                       <div className="destination-tag-group">
                         {displayTags.length > 0 ? (
                           displayTags.map((tag) => (
-                            <span key={tag} className="destination-tag">
-                              {tag}
-                            </span>
+                            <span key={tag} className="destination-tag">{tag}</span>
                           ))
                         ) : (
                           <span className="destination-tag">General fit</span>
