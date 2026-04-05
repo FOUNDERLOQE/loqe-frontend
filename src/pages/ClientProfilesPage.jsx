@@ -87,64 +87,74 @@ function ClientProfilesPage() {
       {!loading && !error && profiles.length > 0 && (
         <div className="profiles-grid">
           {profiles.map((profile) => (
-            <article key={profile._id} className="profile-card glass-card">
-              <div className="profile-card-top">
-                <div>
-                  <p className="section-kicker">
-                    {formatClientType(profile.clientType)}
-                  </p>
-                  <h3>{profile.fullName || 'Untitled Client'}</h3>
+            <Link
+              key={profile._id}
+              to={`/client-profiles/${profile._id}`}
+              className="profile-card-link"
+            >
+              <article className="profile-card glass-card">
+                <div className="profile-card-top">
+                  <div>
+                    <p className="section-kicker">
+                      {formatClientType(profile.clientType)}
+                    </p>
+                    <h3>{profile.fullName || 'Untitled Client'}</h3>
+                  </div>
+
+                  <span className="profile-date">
+                    {formatDate(profile.createdAt)}
+                  </span>
                 </div>
 
-                <span className="profile-date">
-                  {formatDate(profile.createdAt)}
-                </span>
-              </div>
+                <div className="profile-meta">
+                  {profile.tripType && (
+                    <span className="profile-meta-pill">{profile.tripType}</span>
+                  )}
 
-              <div className="profile-meta">
-                {profile.tripType && (
-                  <span className="profile-meta-pill">{profile.tripType}</span>
-                )}
+                  {profile.budgetBand && (
+                    <span className="profile-meta-pill">{profile.budgetBand}</span>
+                  )}
 
-                {profile.budgetBand && (
-                  <span className="profile-meta-pill">{profile.budgetBand}</span>
-                )}
+                  {profile.originCity && (
+                    <span className="profile-meta-pill">{profile.originCity}</span>
+                  )}
 
-                {profile.originCity && (
-                  <span className="profile-meta-pill">{profile.originCity}</span>
-                )}
+                  {profile.cityOfResidence && !profile.originCity && (
+                    <span className="profile-meta-pill">{profile.cityOfResidence}</span>
+                  )}
 
-                {profile.cityOfResidence && !profile.originCity && (
-                  <span className="profile-meta-pill">{profile.cityOfResidence}</span>
-                )}
-
-                {profile.tripLengthDays && (
-                  <span className="profile-meta-pill">
-                    {profile.tripLengthDays} days
-                  </span>
-                )}
-
-                {profile.travellerCount && (
-                  <span className="profile-meta-pill">
-                    {profile.travellerCount} traveller{profile.travellerCount > 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-
-              {!!(profile.travelSignalTags || []).length && (
-                <div className="destination-tag-group">
-                  {profile.travelSignalTags.map((tag) => (
-                    <span key={tag} className="destination-tag">
-                      {tag}
+                  {profile.tripLengthDays && (
+                    <span className="profile-meta-pill">
+                      {profile.tripLengthDays} days
                     </span>
-                  ))}
-                </div>
-              )}
+                  )}
 
-              <p className="destination-summary profile-summary">
-                {profile.autoSummary || 'No summary available.'}
-              </p>
-            </article>
+                  {profile.travellerCount && (
+                    <span className="profile-meta-pill">
+                      {profile.travellerCount} traveller{profile.travellerCount > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+
+                {!!(profile.travelSignalTags || []).length && (
+                  <div className="destination-tag-group">
+                    {profile.travelSignalTags.map((tag) => (
+                      <span key={tag} className="destination-tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <p className="destination-summary profile-summary">
+                  {profile.autoSummary || 'No summary available.'}
+                </p>
+
+                <div className="profile-card-footer">
+                  <span>Open profile →</span>
+                </div>
+              </article>
+            </Link>
           ))}
         </div>
       )}
