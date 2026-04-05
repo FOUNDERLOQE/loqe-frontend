@@ -1,193 +1,105 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { sanity } from '../lib/sanity'
-import { profileToSignals } from '../profileToSignals'
-import { scoreDestinations } from '../scoreDestinations'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import DestinationCard from '../components/DestinationCard'
+import { client } from '../lib/sanity'
+import { destinationsQuery } from '../lib/queries'
+import { profileToSignals } from '../lib/profileToSignals'
+import { scoreDestinations } from '../lib/scoreDestinations'
+
+function buildFallbackSignals(state) {
+  if (!state) {
+    return {
+      preferredTags: [],
+      avoidTags: [],
+      destinationTypes: [],
+      budgetBand: '',
+      tripType: '',
+      tripLengthDays: null,
+      travellerCount: null,
+    }
+  }
+
+  return {
+    preferredTags: [],
+    avoidTags: [],
+    destinationTypes: [],
+    budgetBand: state.budgetBand || '',
+    tripType: state.tripType || '',
+    tripLengthDays: state.tripLengthDays || null,
+    travellerCount: state.travellerCount || null,
+  }
+}
 
 function RecommendationsPage() {
+  const location = useLocation()
+  const routeState = location.state || {}
+
+  const [destinations, setDestinations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [profileDoc, setProfileDoc] = useState(null)
-  const [signals, setSignals] = useState(null)
-  const [recommendations, setRecommendations] = useState([])
-  const [savingRecommendations, setSavingRecommendations] = useState(false)
-  const [saveMessage, setSaveMessage] = useState('')
 
   useEffect(() => {
-    async function loadRecommendations() {
-      try {
-        setLoading(true)
-        setError('')
-        setSaveMessage('')
+    let mounted = true
 
-        const latestProfiles = await sanity.fetch(`
-          *[_type == "clientTravelPersonality"] | order(submittedAt desc)[0...1]{
-            _id,
-            title,
-            clientName,
-            tripType,
-            originCity,
-            tripLengthDays,
-            travellerCount,
-            budgetBand,
-            notes,
-            autoSummary,
-            clientProfileSnapshot,
-            status,
-            submittedAt,
-            recommendationSnapshots
-          }
-        `)
-
-        if (!latestProfiles || latestProfiles.length === 0) {
-          throw new Error('No saved client travel personality found yet.')
-        }
-
-        const latestProfile = latestProfiles[0]
-
-        let parsedClientProfile = {}
-        try {
-          parsedClientProfile = latestProfile.clientProfileSnapshot
-            ? JSON.parse(latestProfile.clientProfileSnapshot)
-            : {}
-        } catch (parseError) {
-          console.error('CLIENT_PROFILE_SNAPSHOT_PARSE_ERROR', parseError)
-          parsedClientProfile = {}
-        }
-
-        const payload = {
-          clientName: latestProfile.clientName || '',
-          tripType: latestProfile.tripType || '',
-          originCity: latestProfile.originCity || '',
-          tripLengthDays: latestProfile.tripLengthDays || null,
-          travellerCount: latestProfile.travellerCount || null,
-          budgetBand: latestProfile.budgetBand || '',
-          notes: latestProfile.notes || '',
-          autoSummary: latestProfile.autoSummary || '',
-          clientProfile: parsedClientProfile,
-        }
-
-        const derivedSignals = profileToSignals(payload)
-
-        const destinations = await sanity.fetch(`
-          *[_type == "destination"] | order(title asc){
-            _id,
-            title,
-            "slug": slug.current,
-            country,
-            region,
-            summary,
-            heroImage,
-            "heroVideoUrl": heroVideo.asset->url,
-            budgetBand,
-            vibeTags,
-            suitableFor,
-            destinationTypes,
-            bestTripTypes,
-            climateTags,
-            paceTags,
-            experienceTags,
-            idealTripLength,
-            travelLogistics
-          }
-        `)
-
-        const ranked = scoreDestinations(destinations, derivedSignals)
-
-        setProfileDoc(latestProfile)
-        setSignals(derivedSignals)
-        setRecommendations(ranked)
-      } catch (err) {
-        console.error('RECOMMENDATIONS_PAGE_ERROR', err)
-        setError(err?.message || 'Failed to load recommendations')
-      } finally {
+    client
+      .fetch(destinationsQuery)
+      .then((data) => {
+        if (!mounted) return
+        setDestinations(Array.isArray(data) ? data : [])
+      })
+      .catch((err) => {
+        console.error('DESTINATIONS_FETCH_ERROR', err)
+        if (!mounted) return
+        setError(err.message || 'Failed to load destinations')
+      })
+      .finally(() => {
+        if (!mounted) return
         setLoading(false)
-      }
-    }
-
-    loadRecommendations()
-  }, [])
-
-  async function handleSaveRecommendations() {
-    try {
-      if (!profileDoc?._id) {
-        throw new Error('No client profile selected to save recommendations against.')
-      }
-
-      setSavingRecommendations(true)
-      setSaveMessage('')
-
-      const topRecommendations = recommendations.slice(0, 5).map((item) => ({
-        destinationId: item._id,
-        title: item.title,
-        slug: item.slug || '',
-        country: item.country || '',
-        region: item.region || '',
-        budgetBand: item.budgetBand || '',
-        recommendationScore: item.recommendationScore || 0,
-        matchReasons: Array.isArray(item.matchReasons) ? item.matchReasons.slice(0, 5) : [],
-        matchWarnings: Array.isArray(item.matchWarnings) ? item.matchWarnings : [],
-      }))
-
-      const response = await fetch('/api/save-recommendations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          profileId: profileDoc._id,
-          recommendations: topRecommendations,
-        }),
       })
 
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to save recommendations')
-      }
-
-      setSaveMessage('Recommendations saved to Sanity successfully.')
-    } catch (err) {
-      console.error('SAVE_RECOMMENDATIONS_CLIENT_ERROR', err)
-      setSaveMessage(`Error saving recommendations: ${err?.message || 'Unknown error'}`)
-    } finally {
-      setSavingRecommendations(false)
+    return () => {
+      mounted = false
     }
-  }
+  }, [])
 
-  if (loading) {
-    return (
-      <div className="page page-luxury">
-        <div className="page-topbar">
-          <Link to="/" className="back-link">
-            ← Back to home
-          </Link>
-        </div>
+  const recommendationInput = useMemo(() => {
+    if (routeState?.source === 'saved-profile' && routeState?.clientProfile) {
+      return routeState.clientProfile
+    }
 
-        <div className="glass-card">
-          <p>Loading recommendations...</p>
-        </div>
-      </div>
-    )
-  }
+    if (routeState?.clientProfile) {
+      return routeState
+    }
 
-  if (error) {
-    return (
-      <div className="page page-luxury">
-        <div className="page-topbar">
-          <Link to="/" className="back-link">
-            ← Back to home
-          </Link>
-        </div>
+    return null
+  }, [routeState])
 
-        <div className="glass-card">
-          <p>{error}</p>
-        </div>
-      </div>
-    )
-  }
+  const signals = useMemo(() => {
+    if (recommendationInput?.profilePayload) {
+      return profileToSignals(recommendationInput)
+    }
 
-  const topRecommendations = recommendations.slice(0, 6)
+    if (recommendationInput?.clientProfile) {
+      return profileToSignals(recommendationInput)
+    }
+
+    return buildFallbackSignals(routeState)
+  }, [recommendationInput, routeState])
+
+  const rankedDestinations = useMemo(() => {
+    if (!Array.isArray(destinations) || destinations.length === 0) return []
+    return scoreDestinations(destinations, signals)
+  }, [destinations, signals])
+
+  const topDestinations = rankedDestinations.slice(0, 6)
+
+  const pageTitle = routeState?.source === 'saved-profile'
+    ? 'Recommendations from Saved Profile'
+    : 'Recommendations'
+
+  const pageSubtitle = routeState?.clientProfile?.fullName
+    ? `Best-fit destinations for ${routeState.clientProfile.fullName}.`
+    : 'Ranked destination suggestions based on the current client profile.'
 
   return (
     <div className="page page-luxury">
@@ -198,169 +110,124 @@ function RecommendationsPage() {
       </div>
 
       <header className="hero luxury-hero">
-        <div className="hero-badge">LŌQÉ Recommendation Engine</div>
-        <h1>Recommendations matched to the latest client profile</h1>
-        <p className="subtext hero-subtext">
-          Structured signals extracted from the latest saved client travel personality,
-          then scored against your destination library.
-        </p>
+        <div className="hero-badge">LŌQÉ Recommendations</div>
+        <h1>{pageTitle}</h1>
+        <p className="subtext hero-subtext">{pageSubtitle}</p>
       </header>
 
-      {profileDoc && (
-        <section className="glass-card" style={{ marginBottom: '24px' }}>
-          <p className="preview-label">Latest saved client</p>
-          <h2>{profileDoc.title || 'Untitled Travel Brief'}</h2>
-          <p className="preview-summary">{profileDoc.autoSummary || 'No summary available.'}</p>
+      <section className="glass-card recommendation-summary-card">
+        <div className="section-head">
+          <div>
+            <p className="section-kicker">Recommendation Signals</p>
+            <h2>What the engine is prioritizing</h2>
+          </div>
+        </div>
 
-          <div className="preview-divider" />
-
-          <div className="field-stack">
-            <p><strong>Client:</strong> {profileDoc.clientName || '—'}</p>
-            <p><strong>Trip type:</strong> {profileDoc.tripType || '—'}</p>
-            <p><strong>Budget band:</strong> {profileDoc.budgetBand || '—'}</p>
-            <p><strong>Origin city:</strong> {profileDoc.originCity || '—'}</p>
-            <p><strong>Trip length:</strong> {profileDoc.tripLengthDays || '—'} days</p>
-            <p><strong>Travellers:</strong> {profileDoc.travellerCount || '—'}</p>
-            <p><strong>Status:</strong> {profileDoc.status || '—'}</p>
+        <div className="profile-detail-grid">
+          <div className="profile-detail-item">
+            <p className="profile-detail-label">Trip Type</p>
+            <p className="profile-detail-value">{signals.tripType || '—'}</p>
           </div>
 
-          <div className="preview-divider" />
-
-          <div
-            className="form-actions"
-            style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}
-          >
-            <button
-              type="button"
-              className="primary-button luxury-button"
-              onClick={handleSaveRecommendations}
-              disabled={savingRecommendations}
-            >
-              {savingRecommendations ? 'Saving recommendations...' : 'Save top recommendations'}
-            </button>
-
-            <Link to="/itinerary-builder" className="secondary-button">
-              Build itinerary draft
-            </Link>
+          <div className="profile-detail-item">
+            <p className="profile-detail-label">Budget Band</p>
+            <p className="profile-detail-value">{signals.budgetBand || '—'}</p>
           </div>
 
-          {saveMessage && <p className="save-message">{saveMessage}</p>}
-        </section>
-      )}
+          <div className="profile-detail-item">
+            <p className="profile-detail-label">Preferred Tags</p>
+            {signals.preferredTags.length > 0 ? (
+              <div className="destination-tag-group">
+                {signals.preferredTags.map((tag) => (
+                  <span key={tag} className="destination-tag">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="profile-detail-value">—</p>
+            )}
+          </div>
 
-      {signals && (
-        <section className="glass-card" style={{ marginBottom: '24px' }}>
-          <p className="preview-label">Derived travel signals</p>
-          <h2>Matching logic snapshot</h2>
+          <div className="profile-detail-item">
+            <p className="profile-detail-label">Avoid Tags</p>
+            {signals.avoidTags.length > 0 ? (
+              <div className="destination-tag-group">
+                {signals.avoidTags.map((tag) => (
+                  <span key={tag} className="destination-tag secondary">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="profile-detail-value">—</p>
+            )}
+          </div>
 
-          <div className="field-stack">
-            <p>
-              <strong>Preferred tags:</strong>{' '}
-              {signals.preferredTags?.length ? signals.preferredTags.join(', ') : '—'}
-            </p>
-            <p>
-              <strong>Avoid tags:</strong>{' '}
-              {signals.avoidTags?.length ? signals.avoidTags.join(', ') : '—'}
-            </p>
-            <p>
-              <strong>Destination types:</strong>{' '}
-              {signals.destinationTypes?.length ? signals.destinationTypes.join(', ') : '—'}
-            </p>
-            <p>
-              <strong>Travel style summary:</strong>{' '}
-              {signals.travelStyleSummary?.length ? signals.travelStyleSummary.join(', ') : '—'}
+          <div className="profile-detail-item">
+            <p className="profile-detail-label">Destination Types</p>
+            {signals.destinationTypes.length > 0 ? (
+              <div className="destination-tag-group">
+                {signals.destinationTypes.map((tag) => (
+                  <span key={tag} className="destination-tag">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="profile-detail-value">—</p>
+            )}
+          </div>
+
+          <div className="profile-detail-item">
+            <p className="profile-detail-label">Trip Length / Travellers</p>
+            <p className="profile-detail-value">
+              {signals.tripLengthDays ? `${signals.tripLengthDays} days` : '—'}
+              {signals.travellerCount ? ` · ${signals.travellerCount} traveller${signals.travellerCount > 1 ? 's' : ''}` : ''}
             </p>
           </div>
-        </section>
-      )}
-
-      <section>
-        <h2 className="section-title">Top Recommendations</h2>
-
-        <div className="field-stack">
-          {topRecommendations.map((destination, index) => (
-            <article
-              key={destination._id}
-              className="glass-card"
-              style={{ marginBottom: '20px' }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: '16px',
-                  alignItems: 'flex-start',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div>
-                  <p className="preview-label">Recommendation #{index + 1}</p>
-                  <h3 style={{ marginBottom: '8px' }}>{destination.title}</h3>
-                  <p className="destination-location">
-                    {[destination.region, destination.country].filter(Boolean).join(', ')}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="preview-label">Score</p>
-                  <h3>{destination.recommendationScore}</h3>
-                </div>
-              </div>
-
-              {destination.summary && (
-                <p style={{ marginTop: '12px' }}>{destination.summary}</p>
-              )}
-
-              <div className="preview-divider" />
-
-              <div style={{ marginBottom: '12px' }}>
-                <p className="preview-label">Top match reasons</p>
-                {destination.matchReasons?.length ? (
-                  <ul>
-                    {destination.matchReasons.slice(0, 3).map((reason) => (
-                      <li key={reason}>{reason}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No specific match reasons found.</p>
-                )}
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <p className="preview-label">Match warnings</p>
-                {destination.matchWarnings?.length ? (
-                  <ul>
-                    {destination.matchWarnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No warnings.</p>
-                )}
-              </div>
-
-              <div>
-                <p className="preview-label">Tags</p>
-                <p>
-                  {[
-                    ...(destination.vibeTags || []),
-                    ...(destination.suitableFor || []),
-                    ...(destination.destinationTypes || []),
-                    ...(destination.bestTripTypes || []),
-                    ...(destination.climateTags || []),
-                    ...(destination.paceTags || []),
-                    ...(destination.experienceTags || []),
-                    ...(destination.travelLogistics || []),
-                    destination.idealTripLength,
-                  ]
-                    .filter(Boolean)
-                    .join(', ') || '—'}
-                </p>
-              </div>
-            </article>
-          ))}
         </div>
       </section>
+
+      {loading && (
+        <div className="glass-card profiles-empty-state">
+          <p>Loading recommendations...</p>
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="glass-card profiles-empty-state">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && topDestinations.length === 0 && (
+        <div className="glass-card profiles-empty-state">
+          <p>No destinations available right now.</p>
+        </div>
+      )}
+
+      {!loading && !error && topDestinations.length > 0 && (
+        <>
+          <section className="section-head recommendations-head">
+            <div>
+              <p className="section-kicker">Top Matches</p>
+              <h2>Best-fit destinations</h2>
+            </div>
+          </section>
+
+          <div className="destinations-grid">
+            {topDestinations.map((destination) => (
+              <div key={destination._id} className="recommendation-card-wrap">
+                <div className="recommendation-score-pill">
+                  Score: {destination.recommendationScore}
+                </div>
+                <DestinationCard destination={destination} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
