@@ -30,6 +30,176 @@ function buildFallbackSignals(state) {
   }
 }
 
+function getPlannerLens(signals) {
+  const preferred = signals.preferredTags || []
+  const types = signals.destinationTypes || []
+
+  if (preferred.includes('romantic')) {
+    return 'Position these as intimate, high-emotion escapes with strong privacy and atmosphere.'
+  }
+
+  if (preferred.includes('wellness')) {
+    return 'Position these as restorative, slow-paced stays built around calm, space, and recovery.'
+  }
+
+  if (preferred.includes('adventure')) {
+    return 'Position these as high-engagement destinations with movement, discovery, and experience density.'
+  }
+
+  if (preferred.includes('luxury')) {
+    return 'Position these as premium, polished, high-service destinations with strong lifestyle appeal.'
+  }
+
+  if (types.includes('beach') || types.includes('island')) {
+    return 'Position these as soft-luxury escapes with visual beauty, easy sell-through, and emotional appeal.'
+  }
+
+  if (types.includes('mountain')) {
+    return 'Position these as secluded, atmospheric retreats with nature-led luxury.'
+  }
+
+  return 'Position these around fit, ease, and the strongest emotional hooks from the client profile.'
+}
+
+function getTopReasons(destination, signals) {
+  const reasons = []
+  const allTags = [...(destination?.vibeTags || []), ...(destination?.suitableFor || [])].map((tag) =>
+    String(tag).toLowerCase()
+  )
+
+  signals.preferredTags.forEach((tag) => {
+    if (
+      reasons.length < 3 &&
+      allTags.some((item) => item.includes(tag))
+    ) {
+      reasons.push(`Strong fit for ${tag}`)
+    }
+  })
+
+  signals.destinationTypes.forEach((tag) => {
+    if (
+      reasons.length < 3 &&
+      allTags.some((item) => item.includes(tag))
+    ) {
+      reasons.push(`Matches preferred ${tag} setting`)
+    }
+  })
+
+  if (
+    reasons.length < 3 &&
+    signals.budgetBand &&
+    destination?.budgetBand === signals.budgetBand
+  ) {
+    reasons.push(`Aligned with ${signals.budgetBand} budget band`)
+  }
+
+  if (
+    reasons.length < 3 &&
+    (signals.tripType || '').toLowerCase().includes('honeymoon') &&
+    allTags.includes('romantic')
+  ) {
+    reasons.push('Strong honeymoon positioning')
+  }
+
+  if (
+    reasons.length < 3 &&
+    (signals.tripType || '').toLowerCase().includes('family') &&
+    allTags.includes('family')
+  ) {
+    reasons.push('Works well for family-led planning')
+  }
+
+  if (
+    reasons.length < 3 &&
+    (signals.tripType || '').toLowerCase().includes('wellness') &&
+    allTags.includes('wellness')
+  ) {
+    reasons.push('Strong wellness-led fit')
+  }
+
+  if (reasons.length === 0) {
+    reasons.push('Good broad fit against overall trip brief')
+  }
+
+  return reasons.slice(0, 3)
+}
+
+function getWarnings(destination, signals) {
+  const warnings = []
+  const allTags = [...(destination?.vibeTags || []), ...(destination?.suitableFor || [])].map((tag) =>
+    String(tag).toLowerCase()
+  )
+
+  signals.avoidTags.forEach((tag) => {
+    if (
+      warnings.length < 2 &&
+      allTags.some((item) => item.includes(tag))
+    ) {
+      warnings.push(`Potential mismatch around ${tag}`)
+    }
+  })
+
+  if (
+    warnings.length < 2 &&
+    signals.budgetBand &&
+    destination?.budgetBand &&
+    destination.budgetBand !== signals.budgetBand
+  ) {
+    warnings.push(`Budget band differs from requested ${signals.budgetBand}`)
+  }
+
+  return warnings.slice(0, 2)
+}
+
+function getPitchLine(destination, signals) {
+  const allTags = [...(destination?.vibeTags || []), ...(destination?.suitableFor || [])].map((tag) =>
+    String(tag).toLowerCase()
+  )
+
+  if (allTags.includes('romantic')) {
+    return 'Pitch this as an emotionally strong, easy-to-desire romantic choice.'
+  }
+
+  if (allTags.includes('wellness')) {
+    return 'Pitch this as a refined reset with strong calm and recovery value.'
+  }
+
+  if (allTags.includes('adventure')) {
+    return 'Pitch this as an active recommendation with high experience value.'
+  }
+
+  if (allTags.includes('luxury') || allTags.includes('ultra luxury')) {
+    return 'Pitch this as a polished luxury option with strong service-led appeal.'
+  }
+
+  if ((signals.destinationTypes || []).includes('beach')) {
+    return 'Pitch this as a clean visual sell with soft-luxury beach energy.'
+  }
+
+  return 'Pitch this based on fit, ease, and the strongest overlapping client preferences.'
+}
+
+function getDisplayTags(destination, signals) {
+  const allTags = [...(destination?.vibeTags || []), ...(destination?.suitableFor || [])]
+  const cleaned = [...new Set(allTags.filter(Boolean))]
+
+  const priority = cleaned.filter((tag) => {
+    const lower = String(tag).toLowerCase()
+    return (
+      (signals.preferredTags || []).some((item) => lower.includes(item)) ||
+      (signals.destinationTypes || []).some((item) => lower.includes(item)) ||
+      lower.includes('luxury') ||
+      lower.includes('romantic') ||
+      lower.includes('wellness') ||
+      lower.includes('beach') ||
+      lower.includes('culture') ||
+      lower.includes('family')
+    )
+  })
+
+  return [...new Set(priority)].slice(0, 6)
+}
+
 function RecommendationsPage() {
   const location = useLocation()
   const routeState = location.state || {}
@@ -92,14 +262,31 @@ function RecommendationsPage() {
   }, [destinations, signals])
 
   const topDestinations = rankedDestinations.slice(0, 6)
+  const bestOverall = topDestinations[0] || null
+  const bestRomantic = topDestinations.find((item) =>
+    [...(item?.vibeTags || []), ...(item?.suitableFor || [])]
+      .map((tag) => String(tag).toLowerCase())
+      .some((tag) => tag.includes('romantic'))
+  )
+  const bestWellness = topDestinations.find((item) =>
+    [...(item?.vibeTags || []), ...(item?.suitableFor || [])]
+      .map((tag) => String(tag).toLowerCase())
+      .some((tag) => tag.includes('wellness'))
+  )
+  const bestAdventure = topDestinations.find((item) =>
+    [...(item?.vibeTags || []), ...(item?.suitableFor || [])]
+      .map((tag) => String(tag).toLowerCase())
+      .some((tag) => tag.includes('adventure'))
+  )
 
-  const pageTitle = routeState?.source === 'saved-profile'
-    ? 'Recommendations from Saved Profile'
-    : 'Recommendations'
+  const pageTitle =
+    routeState?.source === 'saved-profile'
+      ? 'Curated Destination Matches'
+      : 'Luxury Travel Recommendations'
 
   const pageSubtitle = routeState?.clientProfile?.fullName
-    ? `Best-fit destinations for ${routeState.clientProfile.fullName}.`
-    : 'Ranked destination suggestions based on the current client profile.'
+    ? `Curated destination options for ${routeState.clientProfile.fullName}, prioritised for fit, style, and pitchability.`
+    : 'Curated destination options ranked against the current trip brief.'
 
   return (
     <div className="page page-luxury">
@@ -110,84 +297,118 @@ function RecommendationsPage() {
       </div>
 
       <header className="hero luxury-hero">
-        <div className="hero-badge">LŌQÉ Recommendations</div>
+        <div className="hero-badge">LŌQÉ Recommendation Board</div>
         <h1>{pageTitle}</h1>
         <p className="subtext hero-subtext">{pageSubtitle}</p>
       </header>
 
-      <section className="glass-card recommendation-summary-card">
-        <div className="section-head">
+      <section className="glass-card recommendation-hero-card">
+        <div className="recommendation-hero-top">
           <div>
-            <p className="section-kicker">Recommendation Signals</p>
-            <h2>What the engine is prioritizing</h2>
+            <p className="section-kicker">Planner Lens</p>
+            <h2>What should be prioritised</h2>
+            <p className="recommendation-hero-copy">{getPlannerLens(signals)}</p>
+          </div>
+
+          <div className="recommendation-hero-meta">
+            <div className="recommendation-meta-pill">
+              <span>Trip Type</span>
+              <strong>{signals.tripType || '—'}</strong>
+            </div>
+            <div className="recommendation-meta-pill">
+              <span>Budget</span>
+              <strong>{signals.budgetBand || '—'}</strong>
+            </div>
+            <div className="recommendation-meta-pill">
+              <span>Trip Length</span>
+              <strong>{signals.tripLengthDays ? `${signals.tripLengthDays} days` : '—'}</strong>
+            </div>
+            <div className="recommendation-meta-pill">
+              <span>Travellers</span>
+              <strong>
+                {signals.travellerCount
+                  ? `${signals.travellerCount} traveller${signals.travellerCount > 1 ? 's' : ''}`
+                  : '—'}
+              </strong>
+            </div>
           </div>
         </div>
 
-        <div className="profile-detail-grid">
-          <div className="profile-detail-item">
-            <p className="profile-detail-label">Trip Type</p>
-            <p className="profile-detail-value">{signals.tripType || '—'}</p>
-          </div>
-
-          <div className="profile-detail-item">
-            <p className="profile-detail-label">Budget Band</p>
-            <p className="profile-detail-value">{signals.budgetBand || '—'}</p>
-          </div>
-
-          <div className="profile-detail-item">
-            <p className="profile-detail-label">Preferred Tags</p>
-            {signals.preferredTags.length > 0 ? (
-              <div className="destination-tag-group">
-                {signals.preferredTags.map((tag) => (
+        <div className="recommendation-signal-groups">
+          <div className="recommendation-signal-block">
+            <p className="profile-detail-label">Priority tags</p>
+            <div className="destination-tag-group">
+              {(signals.preferredTags || []).length > 0 ? (
+                signals.preferredTags.slice(0, 8).map((tag) => (
                   <span key={tag} className="destination-tag">
                     {tag}
                   </span>
-                ))}
-              </div>
-            ) : (
-              <p className="profile-detail-value">—</p>
-            )}
+                ))
+              ) : (
+                <span className="destination-tag">No strong tags yet</span>
+              )}
+            </div>
           </div>
 
-          <div className="profile-detail-item">
-            <p className="profile-detail-label">Avoid Tags</p>
-            {signals.avoidTags.length > 0 ? (
-              <div className="destination-tag-group">
-                {signals.avoidTags.map((tag) => (
+          <div className="recommendation-signal-block">
+            <p className="profile-detail-label">Avoid</p>
+            <div className="destination-tag-group">
+              {(signals.avoidTags || []).length > 0 ? (
+                signals.avoidTags.slice(0, 6).map((tag) => (
                   <span key={tag} className="destination-tag secondary">
                     {tag}
                   </span>
-                ))}
-              </div>
-            ) : (
-              <p className="profile-detail-value">—</p>
-            )}
+                ))
+              ) : (
+                <span className="destination-tag">No active warnings</span>
+              )}
+            </div>
           </div>
 
-          <div className="profile-detail-item">
-            <p className="profile-detail-label">Destination Types</p>
-            {signals.destinationTypes.length > 0 ? (
-              <div className="destination-tag-group">
-                {signals.destinationTypes.map((tag) => (
+          <div className="recommendation-signal-block">
+            <p className="profile-detail-label">Preferred settings</p>
+            <div className="destination-tag-group">
+              {(signals.destinationTypes || []).length > 0 ? (
+                signals.destinationTypes.slice(0, 6).map((tag) => (
                   <span key={tag} className="destination-tag">
                     {tag}
                   </span>
-                ))}
-              </div>
-            ) : (
-              <p className="profile-detail-value">—</p>
-            )}
-          </div>
-
-          <div className="profile-detail-item">
-            <p className="profile-detail-label">Trip Length / Travellers</p>
-            <p className="profile-detail-value">
-              {signals.tripLengthDays ? `${signals.tripLengthDays} days` : '—'}
-              {signals.travellerCount ? ` · ${signals.travellerCount} traveller${signals.travellerCount > 1 ? 's' : ''}` : ''}
-            </p>
+                ))
+              ) : (
+                <span className="destination-tag">No specific setting yet</span>
+              )}
+            </div>
           </div>
         </div>
       </section>
+
+      {!loading && !error && topDestinations.length > 0 && (
+        <section className="recommendation-highlights-grid">
+          <div className="glass-card recommendation-highlight-card">
+            <p className="section-kicker">Best Overall Match</p>
+            <h3>{bestOverall?.title || '—'}</h3>
+            <p>{bestOverall ? getPitchLine(bestOverall, signals) : '—'}</p>
+          </div>
+
+          <div className="glass-card recommendation-highlight-card">
+            <p className="section-kicker">Most Romantic</p>
+            <h3>{bestRomantic?.title || '—'}</h3>
+            <p>{bestRomantic ? getPitchLine(bestRomantic, signals) : 'No strong romantic standout yet.'}</p>
+          </div>
+
+          <div className="glass-card recommendation-highlight-card">
+            <p className="section-kicker">Best Wellness Fit</p>
+            <h3>{bestWellness?.title || '—'}</h3>
+            <p>{bestWellness ? getPitchLine(bestWellness, signals) : 'No strong wellness-led standout yet.'}</p>
+          </div>
+
+          <div className="glass-card recommendation-highlight-card">
+            <p className="section-kicker">Most Experiential</p>
+            <h3>{bestAdventure?.title || '—'}</h3>
+            <p>{bestAdventure ? getPitchLine(bestAdventure, signals) : 'No strong adventure standout yet.'}</p>
+          </div>
+        </section>
+      )}
 
       {loading && (
         <div className="glass-card profiles-empty-state">
@@ -211,20 +432,102 @@ function RecommendationsPage() {
         <>
           <section className="section-head recommendations-head">
             <div>
-              <p className="section-kicker">Top Matches</p>
+              <p className="section-kicker">Curated Matches</p>
               <h2>Best-fit destinations</h2>
             </div>
           </section>
 
-          <div className="destinations-grid">
-            {topDestinations.map((destination) => (
-              <div key={destination._id} className="recommendation-card-wrap">
-                <div className="recommendation-score-pill">
-                  Score: {destination.recommendationScore}
-                </div>
-                <DestinationCard destination={destination} />
-              </div>
-            ))}
+          <div className="recommendation-luxury-grid">
+            {topDestinations.map((destination, index) => {
+              const reasons = getTopReasons(destination, signals)
+              const warnings = getWarnings(destination, signals)
+              const displayTags = getDisplayTags(destination, signals)
+              const pitchLine = getPitchLine(destination, signals)
+
+              return (
+                <article key={destination._id} className="glass-card recommendation-luxury-card">
+                  <div className="recommendation-luxury-top">
+                    <div>
+                      <p className="section-kicker">Recommendation #{index + 1}</p>
+                      <h3>{destination.title}</h3>
+                      <p className="recommendation-location">
+                        {[destination.region, destination.country].filter(Boolean).join(', ')}
+                      </p>
+                    </div>
+
+                    <div className="recommendation-score-block">
+                      <span>Fit Score</span>
+                      <strong>{destination.recommendationScore}</strong>
+                    </div>
+                  </div>
+
+                  <div className="recommendation-luxury-media">
+                    <DestinationCard destination={destination} />
+                  </div>
+
+                  <div className="recommendation-luxury-sections">
+                    <div className="recommendation-copy-block">
+                      <p className="profile-detail-label">Why it fits</p>
+                      <ul className="recommendation-bullet-list">
+                        {reasons.map((reason) => (
+                          <li key={reason}>{reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="recommendation-copy-block">
+                      <p className="profile-detail-label">Recommended positioning</p>
+                      <p className="profile-detail-value">{pitchLine}</p>
+                    </div>
+
+                    <div className="recommendation-copy-block">
+                      <p className="profile-detail-label">Watchouts</p>
+                      {warnings.length > 0 ? (
+                        <ul className="recommendation-bullet-list warning-list">
+                          {warnings.map((warning) => (
+                            <li key={warning}>{warning}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="profile-detail-value">No major warnings.</p>
+                      )}
+                    </div>
+
+                    <div className="recommendation-copy-block">
+                      <p className="profile-detail-label">Best-fit tags</p>
+                      <div className="destination-tag-group">
+                        {displayTags.length > 0 ? (
+                          displayTags.map((tag) => (
+                            <span key={tag} className="destination-tag">
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="destination-tag">General fit</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="recommendation-actions">
+                    <Link
+                      to={`/destination/${destination.slug?.current || destination.slug}`}
+                      className="secondary-button recommendation-action-link"
+                    >
+                      View Destination
+                    </Link>
+
+                    <Link
+                      to="/itinerary-builder"
+                      state={{ selectedDestination: destination }}
+                      className="primary-button luxury-button recommendation-action-link"
+                    >
+                      Add to Itinerary
+                    </Link>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </>
       )}
