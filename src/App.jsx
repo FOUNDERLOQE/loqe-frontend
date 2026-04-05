@@ -6,6 +6,7 @@ import RecommendationsPage from './pages/RecommendationsPage'
 import DestinationPage from './pages/DestinationPage'
 import ItineraryBuilderPage from './pages/ItineraryBuilderPage'
 import ClientProfilesPage from './pages/ClientProfilesPage'
+import ClientProfileDetailPage from './pages/ClientProfileDetailPage'
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/destination/:slug" element={<DestinationPage />} />
         <Route path="/itinerary-builder" element={<ItineraryBuilderPage />} />
         <Route path="/client-profiles" element={<ClientProfilesPage />} />
+        <Route path="/client-profiles/:id" element={<ClientProfileDetailPage />} />
       </Routes>
     </BrowserRouter>
   )
