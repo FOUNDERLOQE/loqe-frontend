@@ -498,11 +498,17 @@ function RecommendationsPage() {
 
                     <Link
                       to="/itinerary-builder"
-                      state={{ selectedDestination: destination }}
-                      className="primary-button luxury-button recommendation-action-link"
-                    >
-                      Add to Itinerary
-                    </Link>
+                      state={{
+                        selectedDestination: {
+                         ...destination,
+                         matchReasons: reasons,
+    },
+    clientProfile: routeState?.clientProfile || recommendationInput || null,
+  }}
+  className="primary-button luxury-button recommendation-action-link"
+>
+  Add to Itinerary
+</Link>
                   </div>
                 </article>
               )
