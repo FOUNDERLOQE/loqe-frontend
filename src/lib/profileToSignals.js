@@ -1,5 +1,5 @@
 export function profileToSignals(profileDocument) {
-  const payload = profileDocument?.profilePayload || {}
+  const payload = profileDocument?.profilePayload || profileDocument?.clientProfile || {}
 
   const signals = {
     preferredTags: [],
