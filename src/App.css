@@ -1030,3 +1030,36 @@ a {
     grid-template-columns: 1fr;
   }
 }
+.recommendation-summary-card {
+  padding: 1.25rem;
+  border-radius: 22px;
+  margin-bottom: 1.5rem;
+}
+
+.recommendations-head {
+  margin: 1.25rem 0 1rem;
+}
+
+.destinations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.recommendation-card-wrap {
+  position: relative;
+}
+
+.recommendation-score-pill {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(194, 167, 122, 0.14);
+  border: 1px solid rgba(194, 167, 122, 0.24);
+  color: #e2cfad;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
