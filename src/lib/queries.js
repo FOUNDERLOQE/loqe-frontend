@@ -29,22 +29,6 @@ export const clientProfilesQuery = `
     createdAt
   }
 `
-export const clientProfilesQuery = `
-  *[_type == "clientProfile"] | order(createdAt desc){
-    _id,
-    fullName,
-    clientType,
-    cityOfResidence,
-    tripType,
-    tripLengthDays,
-    travellerCount,
-    budgetBand,
-    originCity,
-    autoSummary,
-    travelSignalTags,
-    createdAt
-  }
-`
 
 export const clientProfileDetailQuery = `
   *[_type == "clientProfile" && _id == $id][0]{
