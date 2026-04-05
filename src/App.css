@@ -917,3 +917,116 @@ a {
   border-radius: 22px;
   margin-top: 1rem;
 }
+.profile-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.profile-card-link:hover .profile-card {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+}
+
+.profile-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-card-footer {
+  margin-top: 1rem;
+  color: #dcc29a;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.profile-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.7fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.profile-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.profile-detail-sidebar {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.profile-detail-summary,
+.profile-detail-section,
+.profile-planner-brief {
+  padding: 1.25rem;
+  border-radius: 22px;
+}
+
+.profile-detail-head {
+  margin-bottom: 1rem;
+}
+
+.profile-summary-large {
+  color: rgba(255, 255, 255, 0.84);
+  line-height: 1.8;
+  font-size: 1rem;
+}
+
+.profile-detail-actions {
+  margin-top: 1.25rem;
+}
+
+.profile-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.profile-detail-item {
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.profile-detail-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.profile-detail-value {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.7;
+}
+
+.profile-planner-brief h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.planner-brief-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.8;
+}
+
+@media (max-width: 980px) {
+  .profile-detail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-detail-sidebar {
+    position: static;
+  }
+
+  .profile-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
