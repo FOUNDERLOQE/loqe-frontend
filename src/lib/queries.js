@@ -13,22 +13,7 @@ export const destinationsQuery = `
     suitableFor
   }
 `
-export const clientProfilesQuery = `
-  *[_type == "clientProfile"] | order(createdAt desc){
-    _id,
-    fullName,
-    clientType,
-    cityOfResidence,
-    tripType,
-    tripLengthDays,
-    travellerCount,
-    budgetBand,
-    originCity,
-    autoSummary,
-    travelSignalTags,
-    createdAt
-  }
-`
+
 export const clientProfilesQuery = `
   *[_type == "clientProfile"] | order(createdAt desc){
     _id,
