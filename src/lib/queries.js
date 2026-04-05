@@ -13,6 +13,7 @@ export const destinationsQuery = `
     suitableFor
   }
 `
+
 export const clientProfilesQuery = `
   *[_type == "clientProfile"] | order(createdAt desc){
     _id,
