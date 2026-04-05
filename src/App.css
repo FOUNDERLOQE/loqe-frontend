@@ -861,3 +861,59 @@ a {
 .destination-card:hover .destination-image.with-video {
   opacity: 0;
 }
+.profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.profile-card {
+  padding: 1.25rem;
+  border-radius: 22px;
+}
+
+.profile-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.profile-card-top h3 {
+  margin: 0;
+}
+
+.profile-date {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.profile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.profile-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.84rem;
+}
+
+.profile-summary {
+  margin-top: 1rem;
+}
+
+.profiles-empty-state {
+  padding: 1.5rem;
+  border-radius: 22px;
+  margin-top: 1rem;
+}
