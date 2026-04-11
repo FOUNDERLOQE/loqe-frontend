@@ -106,6 +106,75 @@ function AnnualReviewBlock({ entries }) {
   )
 }
 
+function RecommendationHistoryBlock({ snapshots, profile, onOpenSnapshot }) {
+  if (!Array.isArray(snapshots) || snapshots.length === 0) return null
+
+  const orderedSnapshots = [...snapshots].sort((a, b) => {
+    const aTime = new Date(a?.createdAt || 0).getTime()
+    const bTime = new Date(b?.createdAt || 0).getTime()
+    return bTime - aTime
+  })
+
+  return (
+    <section className="profile-detail-section glass-card">
+      <div className="profile-detail-head">
+        <p className="section-kicker">Recommendation History</p>
+        <h3 className="profile-section-title">Saved recommendation rounds</h3>
+      </div>
+
+      <div className="snapshot-history-stack">
+        {orderedSnapshots.map((snapshot, index) => (
+          <article
+            key={snapshot._key || `${snapshot.createdAt}-${index}`}
+            className="snapshot-history-card"
+          >
+            <div className="snapshot-history-top">
+              <div>
+                <p className="profile-detail-label">
+                  {snapshot.summaryTitle || `Recommendation Snapshot ${index + 1}`}
+                </p>
+                <h4 className="snapshot-history-title">
+                  {formatDate(snapshot.createdAt)}
+                </h4>
+              </div>
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => onOpenSnapshot(snapshot, profile)}
+              >
+                Open Snapshot
+              </button>
+            </div>
+
+            <div className="snapshot-destination-list">
+              {(snapshot.topDestinations || []).slice(0, 4).map((destination, destinationIndex) => (
+                <div
+                  key={destination._key || `${destination.title}-${destinationIndex}`}
+                  className="snapshot-destination-item"
+                >
+                  <div>
+                    <p className="snapshot-destination-name">
+                      {destination.title || 'Untitled Destination'}
+                    </p>
+                    <p className="snapshot-destination-meta">
+                      {[destination.region, destination.country].filter(Boolean).join(', ') || '—'}
+                    </p>
+                  </div>
+
+                  <div className="snapshot-destination-score">
+                    {destination.recommendationScore || 0}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function ClientProfileDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -177,7 +246,14 @@ function ClientProfileDetailPage() {
     { label: 'Plan or Flow', value: renderText(payload.wouldYouRatherPlanOrFlow) },
     { label: 'Preferred Climate', value: renderText(payload.preferredClimate) },
     { label: 'Ideal Travel Soundtrack', value: renderText(payload.idealTravelSoundtrack) },
-    { label: 'Holiday Movie', value: renderText(payload.holidayMovie === 'Other' ? payload.holidayMovieOther || 'Other' : payload.holidayMovie) },
+    {
+      label: 'Holiday Movie',
+      value: renderText(
+        payload.holidayMovie === 'Other'
+          ? payload.holidayMovieOther || 'Other'
+          : payload.holidayMovie
+      ),
+    },
     { label: 'Travel Excitement', value: renderArray(payload.travelExcitement) },
     { label: 'Trip Vibe Words', value: renderText(payload.tripVibeWords) },
     { label: 'Travel Spirit Animal', value: renderText(payload.travelSpiritAnimal) },
@@ -220,6 +296,25 @@ function ClientProfileDetailPage() {
         source: 'saved-profile',
         clientProfileId: profile?._id,
         clientProfile: profile,
+      },
+    })
+  }
+
+  function handleOpenSnapshot(snapshot, currentProfile) {
+    const topDestinations = Array.isArray(snapshot?.topDestinations)
+      ? snapshot.topDestinations
+      : []
+
+    navigate('/recommendations', {
+      state: {
+        source: 'saved-snapshot',
+        snapshotTitle: snapshot?.summaryTitle || 'Saved Recommendation Snapshot',
+        clientProfileId: currentProfile?._id,
+        clientProfile: currentProfile,
+        savedSnapshot: {
+          createdAt: snapshot?.createdAt || '',
+          topDestinations,
+        },
       },
     })
   }
@@ -286,6 +381,12 @@ function ClientProfileDetailPage() {
               </button>
             </div>
           </section>
+
+          <RecommendationHistoryBlock
+            snapshots={profile.recommendationSnapshots}
+            profile={profile}
+            onOpenSnapshot={handleOpenSnapshot}
+          />
 
           <SectionBlock title="Trip Overview" items={overviewItems} />
           <SectionBlock title="Identity" items={identityItems} />
