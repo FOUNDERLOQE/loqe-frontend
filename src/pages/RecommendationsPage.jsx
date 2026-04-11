@@ -314,14 +314,19 @@ const rankedDestinations = useMemo(() => {
       .some((tag) => tag.includes('adventure'))
   )
 
-  const pageTitle =
-    routeState?.source === 'saved-profile'
+const pageTitle =
+  routeState?.source === 'saved-snapshot'
+    ? routeState?.snapshotTitle || 'Saved Recommendation Snapshot'
+    : routeState?.source === 'saved-profile'
       ? 'Curated Destination Matches'
       : 'Luxury Travel Recommendations'
 
-  const pageSubtitle = routeState?.clientProfile?.fullName
-    ? `Curated destination options for ${routeState.clientProfile.fullName}, prioritised for fit, style, and pitchability.`
-    : 'Curated destination options ranked against the current trip brief.'
+const pageSubtitle =
+  routeState?.source === 'saved-snapshot'
+    ? `Reopened saved destination shortlist for ${routeState?.clientProfile?.fullName || 'this client'}.`
+    : routeState?.clientProfile?.fullName
+      ? `Curated destination options for ${routeState.clientProfile.fullName}, prioritised for fit, style, and pitchability.`
+      : 'Curated destination options ranked against the current trip brief.'
 
   async function handleSaveSnapshot() {
     try {
@@ -472,18 +477,20 @@ const rankedDestinations = useMemo(() => {
           </div>
         </div>
 
-        <div className="recommendation-top-actions">
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={handleSaveSnapshot}
-            disabled={savingSnapshot || topDestinations.length === 0}
-          >
-            {savingSnapshot ? 'Saving snapshot...' : 'Save Recommendation Snapshot'}
-          </button>
+<div className="recommendation-top-actions">
+  {routeState?.source !== 'saved-snapshot' && (
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={handleSaveSnapshot}
+      disabled={savingSnapshot || topDestinations.length === 0}
+    >
+      {savingSnapshot ? 'Saving snapshot...' : 'Save Recommendation Snapshot'}
+    </button>
+  )}
 
-          {snapshotMessage && <p className="save-message">{snapshotMessage}</p>}
-        </div>
+  {snapshotMessage && <p className="save-message">{snapshotMessage}</p>}
+</div>
       </section>
 
       {!loading && !error && topDestinations.length > 0 && (
