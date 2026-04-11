@@ -279,10 +279,21 @@ function RecommendationsPage() {
     return buildFallbackSignals(routeState)
   }, [recommendationInput, routeState])
 
-  const rankedDestinations = useMemo(() => {
-    if (!Array.isArray(destinations) || destinations.length === 0) return []
-    return scoreDestinations(destinations, signals)
-  }, [destinations, signals])
+  const savedSnapshotDestinations = useMemo(() => {
+  if (routeState?.source !== 'saved-snapshot') return []
+  return Array.isArray(routeState?.savedSnapshot?.topDestinations)
+    ? routeState.savedSnapshot.topDestinations
+    : []
+}, [routeState])
+
+const rankedDestinations = useMemo(() => {
+  if (routeState?.source === 'saved-snapshot' && savedSnapshotDestinations.length > 0) {
+    return savedSnapshotDestinations
+  }
+
+  if (!Array.isArray(destinations) || destinations.length === 0) return []
+  return scoreDestinations(destinations, signals)
+}, [destinations, signals, routeState, savedSnapshotDestinations])
 
   const topDestinations = rankedDestinations.slice(0, 6)
 
