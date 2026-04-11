@@ -50,6 +50,7 @@ export const clientProfileDetailQuery = `
     autoSummary,
     travelSignalTags,
     profilePayload,
+    recommendationSnapshots,
     createdAt
   }
 `
