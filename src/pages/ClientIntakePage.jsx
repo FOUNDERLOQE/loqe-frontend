@@ -62,9 +62,7 @@ function ClientIntakePage() {
 
   const structuredPreview = useMemo(() => {
     return {
-      title: form.clientName
-        ? `${form.clientName} - Travel Brief`
-        : 'Untitled Travel Brief',
+      fullName: form.clientName,
       clientName: form.clientName,
       tripType: form.tripType,
       originCity: form.originCity,
@@ -103,18 +101,18 @@ function ClientIntakePage() {
         )
       }
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to save trip brief')
+      if (!response.ok || !result.ok || !result.id) {
+        throw new Error(result.error || 'Failed to save client profile')
       }
 
       setSaveMessage('Client profile saved successfully.')
 
       setTimeout(() => {
-        navigate('/recommendations')
-      }, 800)
+        navigate(`/client-profiles/${result.id}/recommendations`)
+      }, 500)
     } catch (err) {
       console.error('CREATE ERROR:', err)
-      setSaveMessage(`Error saving trip brief: ${err.message}`)
+      setSaveMessage(`Error saving client profile: ${err.message}`)
     } finally {
       setSaving(false)
     }
