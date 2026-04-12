@@ -82,6 +82,9 @@ function HomePage() {
           <Link to="/client-profiles" className="secondary-button">
             View saved client profiles
           </Link>
+          <Link to="/itinerary-drafts" className="secondary-button">
+            View itinerary drafts
+          </Link>
         </div>
       </header>
 
