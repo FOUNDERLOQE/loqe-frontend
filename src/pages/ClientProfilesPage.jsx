@@ -1,9 +1,78 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { client } from '../lib/sanity'
-import { clientProfilesQuery } from '../lib/queries'
 
-function formatClientType(value) {
+const clientProfilesListQuery = `
+  *[_type == "clientProfile"] | order(coalesce(_updatedAt, _createdAt) desc){
+    _id,
+    _createdAt,
+    _updatedAt,
+
+    clientType,
+
+    clientName,
+    fullName,
+    name,
+    firstName,
+    lastName,
+    email,
+    phone,
+    company,
+
+    tripName,
+    tripType,
+    purposeOfTravel,
+
+    budgetBand,
+    budgetRange,
+    budget,
+
+    originCity,
+    departureCity,
+    cityOfResidence,
+    location,
+
+    tripLengthDays,
+    tripLength,
+    duration,
+    nights,
+    days,
+
+    travellerCount,
+    partySize,
+    travelers,
+    adults,
+    children,
+    kids,
+
+    travelSignalTags,
+    travelStyle,
+    luxuryStyle,
+    vibe,
+
+    autoSummary,
+    summary,
+    questionnaireOutput
+  }
+`
+
+function getDisplayName(profile) {
+  if (!profile) return 'Untitled Client'
+
+  const joined = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim()
+
+  return (
+    profile.clientName ||
+    profile.fullName ||
+    profile.name ||
+    joined ||
+    profile.email ||
+    'Untitled Client'
+  )
+}
+
+function getClientType(profile) {
+  const value = profile?.clientType
   if (!value) return 'Client'
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
@@ -21,6 +90,73 @@ function formatDate(value) {
   })
 }
 
+function getTripLabel(profile) {
+  return profile.tripName || profile.tripType || profile.purposeOfTravel || ''
+}
+
+function getBudgetLabel(profile) {
+  return profile.budgetBand || profile.budgetRange || profile.budget || ''
+}
+
+function getOriginLabel(profile) {
+  return profile.originCity || profile.departureCity || profile.cityOfResidence || profile.location || ''
+}
+
+function getDurationLabel(profile) {
+  const value =
+    profile.tripLengthDays ||
+    profile.tripLength ||
+    profile.duration ||
+    profile.nights ||
+    profile.days
+
+  return value ? `${value} days` : ''
+}
+
+function getTravellerLabel(profile) {
+  if (profile.travellerCount) {
+    return `${profile.travellerCount} traveller${Number(profile.travellerCount) > 1 ? 's' : ''}`
+  }
+
+  if (profile.partySize) {
+    return `${profile.partySize} traveller${Number(profile.partySize) > 1 ? 's' : ''}`
+  }
+
+  if (profile.travelers) {
+    return `${profile.travelers} traveller${Number(profile.travelers) > 1 ? 's' : ''}`
+  }
+
+  const parts = []
+  if (profile.adults) parts.push(`${profile.adults} adult${Number(profile.adults) > 1 ? 's' : ''}`)
+  if (profile.children || profile.kids) {
+    const kids = profile.children || profile.kids
+    parts.push(`${kids} child${Number(kids) > 1 ? 'ren' : ''}`)
+  }
+
+  return parts.join(', ')
+}
+
+function getSignalTags(profile) {
+  if (Array.isArray(profile.travelSignalTags) && profile.travelSignalTags.length > 0) {
+    return profile.travelSignalTags.slice(0, 6)
+  }
+
+  return [
+    profile.travelStyle,
+    profile.luxuryStyle,
+    profile.vibe,
+  ].filter(Boolean).slice(0, 6)
+}
+
+function getSummary(profile) {
+  return (
+    profile.autoSummary ||
+    profile.summary ||
+    profile.questionnaireOutput ||
+    'No summary available.'
+  )
+}
+
 function ClientProfilesPage() {
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
@@ -29,21 +165,26 @@ function ClientProfilesPage() {
   useEffect(() => {
     let mounted = true
 
-    client
-      .fetch(clientProfilesQuery)
-      .then((data) => {
+    async function loadProfiles() {
+      try {
+        setLoading(true)
+        setError('')
+
+        const data = await client.fetch(clientProfilesListQuery)
+
         if (!mounted) return
         setProfiles(Array.isArray(data) ? data : [])
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error('CLIENT_PROFILES_FETCH_ERROR', err)
         if (!mounted) return
-        setError(err.message || 'Failed to load client profiles')
-      })
-      .finally(() => {
+        setError(err?.message || 'Failed to load client profiles')
+      } finally {
         if (!mounted) return
         setLoading(false)
-      })
+      }
+    }
+
+    loadProfiles()
 
     return () => {
       mounted = false
@@ -86,76 +227,70 @@ function ClientProfilesPage() {
 
       {!loading && !error && profiles.length > 0 && (
         <div className="profiles-grid">
-          {profiles.map((profile) => (
-            <Link
-              key={profile._id}
-              to={`/client-profiles/${profile._id}`}
-              className="profile-card-link"
-            >
-              <article className="profile-card glass-card">
-                <div className="profile-card-top">
-                  <div>
-                    <p className="section-kicker">
-                      {formatClientType(profile.clientType)}
-                    </p>
-                    <h3>{profile.fullName || 'Untitled Client'}</h3>
+          {profiles.map((profile) => {
+            const tags = getSignalTags(profile)
+
+            return (
+              <Link
+                key={profile._id}
+                to={`/client-profiles/${profile._id}`}
+                className="profile-card-link"
+              >
+                <article className="profile-card glass-card">
+                  <div className="profile-card-top">
+                    <div>
+                      <p className="section-kicker">{getClientType(profile)}</p>
+                      <h3>{getDisplayName(profile)}</h3>
+                    </div>
+
+                    <span className="profile-date">
+                      {formatDate(profile._updatedAt || profile._createdAt)}
+                    </span>
                   </div>
 
-                  <span className="profile-date">
-                    {formatDate(profile.createdAt)}
-                  </span>
-                </div>
+                  <div className="profile-meta">
+                    {getTripLabel(profile) && (
+                      <span className="profile-meta-pill">{getTripLabel(profile)}</span>
+                    )}
 
-                <div className="profile-meta">
-                  {profile.tripType && (
-                    <span className="profile-meta-pill">{profile.tripType}</span>
-                  )}
+                    {getBudgetLabel(profile) && (
+                      <span className="profile-meta-pill">{getBudgetLabel(profile)}</span>
+                    )}
 
-                  {profile.budgetBand && (
-                    <span className="profile-meta-pill">{profile.budgetBand}</span>
-                  )}
+                    {getOriginLabel(profile) && (
+                      <span className="profile-meta-pill">{getOriginLabel(profile)}</span>
+                    )}
 
-                  {profile.originCity && (
-                    <span className="profile-meta-pill">{profile.originCity}</span>
-                  )}
+                    {getDurationLabel(profile) && (
+                      <span className="profile-meta-pill">{getDurationLabel(profile)}</span>
+                    )}
 
-                  {profile.cityOfResidence && !profile.originCity && (
-                    <span className="profile-meta-pill">{profile.cityOfResidence}</span>
-                  )}
-
-                  {profile.tripLengthDays && (
-                    <span className="profile-meta-pill">
-                      {profile.tripLengthDays} days
-                    </span>
-                  )}
-
-                  {profile.travellerCount && (
-                    <span className="profile-meta-pill">
-                      {profile.travellerCount} traveller{profile.travellerCount > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-
-                {!!(profile.travelSignalTags || []).length && (
-                  <div className="destination-tag-group">
-                    {profile.travelSignalTags.map((tag) => (
-                      <span key={tag} className="destination-tag">
-                        {tag}
-                      </span>
-                    ))}
+                    {getTravellerLabel(profile) && (
+                      <span className="profile-meta-pill">{getTravellerLabel(profile)}</span>
+                    )}
                   </div>
-                )}
 
-                <p className="destination-summary profile-summary">
-                  {profile.autoSummary || 'No summary available.'}
-                </p>
+                  {tags.length > 0 && (
+                    <div className="destination-tag-group">
+                      {tags.map((tag) => (
+                        <span key={tag} className="destination-tag">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-                <div className="profile-card-footer">
-                  <span>Open profile →</span>
-                </div>
-              </article>
-            </Link>
-          ))}
+                  <p className="destination-summary profile-summary">
+                    {getSummary(profile)}
+                  </p>
+
+                  <div className="profile-card-footer">
+                    <span>Open profile →</span>
+                  </div>
+                </article>
+              </Link>
+            )
+          })}
         </div>
       )}
     </div>
