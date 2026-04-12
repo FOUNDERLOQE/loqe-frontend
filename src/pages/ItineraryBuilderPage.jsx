@@ -190,7 +190,10 @@ function ItineraryBuilderPage() {
           throw new Error('Client profile not found.')
         }
 
-        const drafts = await client.fetch(itineraryDraftsByProfileQuery, { id: profile._id })
+        const drafts = await client.fetch(itineraryDraftsByProfileQuery, {
+          id: profile._id,
+          draftId: `drafts.${profile._id}`,
+        })
 
         if (!cancelled) {
           setProfileDoc(profile)
@@ -317,9 +320,10 @@ function ItineraryBuilderPage() {
       setSaveMessage('Itinerary draft created successfully in Sanity.')
 
       const drafts = await client.fetch(itineraryDraftsByProfileQuery, {
-        id: profile._id,
-        draftId: `drafts.${profile._id}`,
+        id: profileDoc._id,
+        draftId: `drafts.${profileDoc._id}`,
       })
+
       setItineraryDrafts(Array.isArray(drafts) ? drafts : [])
     } catch (err) {
       console.error('CREATE_ITINERARY_DRAFT_CLIENT_ERROR', err)
