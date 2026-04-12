@@ -7,6 +7,8 @@ import DestinationPage from './pages/DestinationPage'
 import ItineraryBuilderPage from './pages/ItineraryBuilderPage'
 import ClientProfilesPage from './pages/ClientProfilesPage'
 import ClientProfileDetailPage from './pages/ClientProfileDetailPage'
+import ItineraryDraftsPage from './pages/ItineraryDraftsPage'
+import ItineraryDraftDetailPage from './pages/ItineraryDraftDetailPage'
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
         <Route path="/itinerary-builder" element={<ItineraryBuilderPage />} />
         <Route path="/client-profiles" element={<ClientProfilesPage />} />
         <Route path="/client-profiles/:id" element={<ClientProfileDetailPage />} />
+        <Route path="/itinerary-drafts" element={<ItineraryDraftsPage />} />
+        <Route path="/itinerary-drafts/:id" element={<ItineraryDraftDetailPage />} />
       </Routes>
     </BrowserRouter>
   )

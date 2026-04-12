@@ -1,242 +1,336 @@
-export function profileToSignals(payload) {
-  const profile = payload?.clientProfile || {}
+export function profileToSignals(profileDocument) {
+  const payload = profileDocument?.profilePayload || profileDocument?.clientProfile || {}
 
   const signals = {
     preferredTags: [],
     avoidTags: [],
     destinationTypes: [],
-    budgetBand: payload?.budgetBand || '',
-    tripType: payload?.tripType || '',
-    tripLengthDays: Number(payload?.tripLengthDays) || null,
-    travellerCount: Number(payload?.travellerCount) || null,
-    travelStyleSummary: [],
+    budgetBand: profileDocument?.budgetBand || '',
+    tripType: profileDocument?.tripType || '',
+    tripLengthDays: profileDocument?.tripLengthDays || null,
+    travellerCount: profileDocument?.travellerCount || null,
+
+    themeWeights: {
+      luxury: 0,
+      romance: 0,
+      wellness: 0,
+      adventure: 0,
+      culture: 0,
+      food: 0,
+      family: 0,
+      nightlife: 0,
+      nature: 0,
+      shopping: 0,
+      slowTravel: 0,
+      privacy: 0,
+      beach: 0,
+      mountain: 0,
+    },
   }
 
-  const energyDrink = (profile.travelEnergyDrink || '').toLowerCase()
-  const vibeWords = (profile.tripVibeWords || '').toLowerCase()
-  const dealBreakers = (profile.absoluteDealBreakers || '').toLowerCase()
-  const mustHaves = (profile.accommodationMustHaves || '').toLowerCase()
-  const dreamExperiences = (profile.dreamExperiences || '').toLowerCase()
-  const climate = (profile.preferredClimate || '').toLowerCase()
-  const cuisines = (profile.favoriteCuisinesDishes || '').toLowerCase()
-  const hobbies = (profile.hobbiesPassions || '').toLowerCase()
-  const specialEvents = (profile.specialEventsTravelFor || '').toLowerCase()
-
-  if (energyDrink.includes('luxurious')) {
-    signals.preferredTags.push('luxury', 'slow travel', 'relaxation')
+  const addTag = (tag) => {
+    if (tag) signals.preferredTags.push(tag)
   }
 
-  if (energyDrink.includes('energetic')) {
-    signals.preferredTags.push('nightlife', 'city', 'high energy')
+  const addAvoid = (tag) => {
+    if (tag) signals.avoidTags.push(tag)
   }
 
-  if (energyDrink.includes('restorative')) {
-    signals.preferredTags.push('wellness', 'beach', 'quiet')
+  const addType = (tag) => {
+    if (tag) signals.destinationTypes.push(tag)
   }
 
-  if (energyDrink.includes('celebratory')) {
-    signals.preferredTags.push('celebration', 'romantic', 'luxury')
+  const boost = (theme, points = 1) => {
+    if (signals.themeWeights[theme] !== undefined) {
+      signals.themeWeights[theme] += points
+    }
   }
 
-  if (energyDrink.includes('purpose-driven')) {
-    signals.preferredTags.push('culture', 'learning', 'events')
+  const vibeWords = (payload.tripVibeWords || '').toLowerCase()
+  const dealBreakers = (payload.absoluteDealBreakers || '').toLowerCase()
+  const mustHaves = (payload.accommodationMustHaves || '').toLowerCase()
+  const dreamExperiences = (payload.dreamExperiences || '').toLowerCase()
+  const pastFavorites = (payload.favoritePastDestinationsWhy || '').toLowerCase()
+  const wontReturn = (payload.wontReturnDestinationsWhy || '').toLowerCase()
+  const hobbies = (payload.hobbiesPassions || '').toLowerCase()
+  const cuisine = (payload.favoriteCuisinesDishes || '').toLowerCase()
+
+  const energy = (payload.travelEnergyDrink || '').toLowerCase()
+
+  if (energy.includes('luxurious')) {
+    addTag('luxury')
+    addTag('slow travel')
+    boost('luxury', 4)
+    boost('slowTravel', 3)
   }
 
-  if (profile.wouldYouRatherOceanOrMountain === 'Ocean waves') {
-    signals.destinationTypes.push('beach', 'island', 'coastal')
+  if (energy.includes('energetic')) {
+    addTag('nightlife')
+    addTag('city')
+    boost('nightlife', 4)
+    boost('adventure', 2)
   }
 
-  if (profile.wouldYouRatherOceanOrMountain === 'Mountain air') {
-    signals.destinationTypes.push('mountain', 'nature', 'retreat')
+  if (energy.includes('restorative')) {
+    addTag('wellness')
+    addTag('quiet')
+    boost('wellness', 5)
+    boost('slowTravel', 2)
+    boost('privacy', 2)
   }
 
-  if (profile.wouldYouRatherExploreOrLounge === 'Exploring') {
-    signals.preferredTags.push('adventure', 'culture', 'active')
+  if (energy.includes('celebratory')) {
+    addTag('romantic')
+    addTag('luxury')
+    boost('romance', 4)
+    boost('luxury', 3)
   }
 
-  if (profile.wouldYouRatherExploreOrLounge === 'Lounging') {
-    signals.preferredTags.push('relaxation', 'slow travel', 'resort')
+  if (energy.includes('purpose-driven')) {
+    addTag('culture')
+    addTag('learning')
+    boost('culture', 4)
   }
 
-  if (profile.wouldYouRatherStreetFoodOrMichelin === 'Street food') {
-    signals.preferredTags.push('local immersion', 'food')
+  if (payload.wouldYouRatherOceanOrMountain === 'Ocean waves') {
+    addType('beach')
+    addType('island')
+    addTag('beach')
+    boost('beach', 5)
   }
 
-  if (profile.wouldYouRatherStreetFoodOrMichelin === 'Michelin star dining') {
-    signals.preferredTags.push('fine dining', 'luxury')
+  if (payload.wouldYouRatherOceanOrMountain === 'Mountain air') {
+    addType('mountain')
+    addType('nature')
+    addTag('mountain')
+    boost('mountain', 5)
+    boost('nature', 3)
   }
 
-  const excitement = Array.isArray(profile.travelExcitement)
-    ? profile.travelExcitement
-    : []
+  if (payload.wouldYouRatherExploreOrLounge === 'Exploring') {
+    addTag('adventure')
+    addTag('culture')
+    boost('adventure', 4)
+    boost('culture', 2)
+  }
+
+  if (payload.wouldYouRatherExploreOrLounge === 'Lounging') {
+    addTag('relaxation')
+    addTag('resort')
+    boost('slowTravel', 4)
+    boost('wellness', 2)
+    boost('privacy', 2)
+  }
+
+  if (payload.wouldYouRatherStreetFoodOrMichelin === 'Street food') {
+    addTag('food')
+    addTag('local immersion')
+    boost('food', 4)
+    boost('culture', 2)
+  }
+
+  if (payload.wouldYouRatherStreetFoodOrMichelin === 'Michelin star dining') {
+    addTag('fine dining')
+    addTag('luxury')
+    boost('food', 3)
+    boost('luxury', 2)
+  }
+
+  if (payload.wouldYouRatherPlanOrFlow === 'Flow') {
+    addTag('slow travel')
+    boost('slowTravel', 2)
+  }
+
+  if (payload.wouldYouRatherPlanOrFlow === 'Plan') {
+    addTag('structured')
+  }
+
+  const excitement = Array.isArray(payload.travelExcitement) ? payload.travelExcitement : []
 
   if (excitement.includes('Culinary experiences')) {
-    signals.preferredTags.push('food')
+    addTag('food')
+    boost('food', 4)
   }
 
   if (excitement.includes('Cultural immersion')) {
-    signals.preferredTags.push('culture')
+    addTag('culture')
+    boost('culture', 4)
   }
 
   if (excitement.includes('Adventure sports')) {
-    signals.preferredTags.push('adventure')
+    addTag('adventure')
+    boost('adventure', 5)
   }
 
   if (excitement.includes('Luxury indulgence')) {
-    signals.preferredTags.push('luxury')
+    addTag('luxury')
+    boost('luxury', 5)
   }
 
   if (excitement.includes('Wellness & retreats')) {
-    signals.preferredTags.push('wellness')
+    addTag('wellness')
+    boost('wellness', 5)
   }
 
   if (excitement.includes('Shopping & fashion')) {
-    signals.preferredTags.push('shopping')
+    addTag('shopping')
+    boost('shopping', 4)
   }
 
-  if (vibeWords.includes('romantic')) signals.preferredTags.push('romantic')
-  if (vibeWords.includes('spiritual')) signals.preferredTags.push('spiritual')
-  if (vibeWords.includes('thrilling')) signals.preferredTags.push('adventure')
-  if (vibeWords.includes('indulgent')) signals.preferredTags.push('luxury')
-  if (vibeWords.includes('peaceful')) signals.preferredTags.push('quiet')
-  if (vibeWords.includes('playful')) signals.preferredTags.push('fun')
-  if (vibeWords.includes('cultural')) signals.preferredTags.push('culture')
+  if (vibeWords.includes('romantic')) {
+    addTag('romantic')
+    boost('romance', 5)
+  }
+  if (vibeWords.includes('spiritual')) {
+    addTag('spiritual')
+    boost('wellness', 2)
+    boost('culture', 1)
+  }
+  if (vibeWords.includes('thrilling')) {
+    addTag('adventure')
+    boost('adventure', 4)
+  }
+  if (vibeWords.includes('indulgent')) {
+    addTag('luxury')
+    boost('luxury', 4)
+  }
+  if (vibeWords.includes('secluded')) {
+    addTag('privacy')
+    boost('privacy', 4)
+  }
+  if (vibeWords.includes('calm')) {
+    addTag('quiet')
+    boost('slowTravel', 2)
+    boost('wellness', 2)
+  }
 
   if (mustHaves.includes('private pool')) {
-    signals.preferredTags.push('private villa', 'privacy')
+    addTag('private villa')
+    addTag('privacy')
+    boost('privacy', 4)
+    boost('luxury', 2)
   }
 
   if (mustHaves.includes('sea view')) {
-    signals.preferredTags.push('beach', 'ocean view')
+    addTag('ocean view')
+    addTag('beach')
+    boost('beach', 3)
   }
 
   if (mustHaves.includes('butler')) {
-    signals.preferredTags.push('ultra luxury')
+    addTag('ultra luxury')
+    boost('luxury', 4)
   }
 
   if (mustHaves.includes('spa')) {
-    signals.preferredTags.push('wellness')
+    addTag('wellness')
+    boost('wellness', 3)
   }
 
   if (mustHaves.includes('kids club')) {
-    signals.preferredTags.push('family')
+    addTag('family')
+    boost('family', 4)
   }
 
-  if (dealBreakers.includes('crowd') || dealBreakers.includes('crowded')) {
-    signals.avoidTags.push('crowded')
-  }
-
-  if (dealBreakers.includes('budget hotel')) {
-    signals.avoidTags.push('budget')
-  }
-
-  if (dealBreakers.includes('red-eye')) {
-    signals.avoidTags.push('complex flights')
-  }
-
-  if (dealBreakers.includes('noise') || dealBreakers.includes('noisy')) {
-    signals.avoidTags.push('nightlife')
-  }
-
-  if (dealBreakers.includes('long drive')) {
-    signals.avoidTags.push('remote transfer')
-  }
+  if (dealBreakers.includes('crowd')) addAvoid('crowded')
+  if (dealBreakers.includes('budget hotel')) addAvoid('budget')
+  if (dealBreakers.includes('red-eye')) addAvoid('complex flights')
+  if (dealBreakers.includes('noise')) addAvoid('noisy')
+  if (dealBreakers.includes('party')) addAvoid('nightlife')
+  if (dealBreakers.includes('cold')) addAvoid('cold')
+  if (dealBreakers.includes('transfers')) addAvoid('complex logistics')
 
   if (dreamExperiences.includes('maldives')) {
-    signals.destinationTypes.push('island')
+    addType('island')
+    addTag('beach')
+    boost('beach', 3)
+    boost('luxury', 2)
   }
 
   if (dreamExperiences.includes('kyoto')) {
-    signals.destinationTypes.push('culture')
+    addType('culture')
+    addTag('culture')
+    boost('culture', 3)
   }
 
   if (dreamExperiences.includes('cappadocia')) {
-    signals.destinationTypes.push('bucket list')
+    addType('bucket list')
+    addTag('adventure')
+    boost('adventure', 2)
   }
 
-  if (dreamExperiences.includes('safari')) {
-    signals.destinationTypes.push('wildlife')
-    signals.preferredTags.push('adventure')
+  if (pastFavorites.includes('beach')) {
+    addTag('beach')
+    boost('beach', 3)
   }
 
-  if (dreamExperiences.includes('northern lights')) {
-    signals.destinationTypes.push('cold climate', 'bucket list')
+  if (pastFavorites.includes('food')) {
+    addTag('food')
+    boost('food', 2)
   }
 
-  if (climate.includes('cold')) {
-    signals.destinationTypes.push('cold climate')
+  if (pastFavorites.includes('culture')) {
+    addTag('culture')
+    boost('culture', 2)
   }
 
-  if (climate.includes('warm') || climate.includes('tropical')) {
-    signals.destinationTypes.push('warm weather')
+  if (pastFavorites.includes('relax')) {
+    addTag('slow travel')
+    boost('slowTravel', 2)
   }
 
-  if (climate.includes('beach')) {
-    signals.destinationTypes.push('beach')
-  }
+  if (wontReturn.includes('crowd')) addAvoid('crowded')
+  if (wontReturn.includes('unsafe')) addAvoid('unsafe')
+  if (wontReturn.includes('boring')) addAvoid('slow')
+  if (wontReturn.includes('touristy')) addAvoid('touristy')
 
-  if (cuisines.includes('japanese')) {
-    signals.preferredTags.push('fine dining', 'culture')
-  }
-
-  if (cuisines.includes('italian')) {
-    signals.preferredTags.push('food', 'romantic')
-  }
-
-  if (cuisines.includes('local')) {
-    signals.preferredTags.push('local immersion')
-  }
-
-  if (hobbies.includes('shopping') || hobbies.includes('fashion')) {
-    signals.preferredTags.push('shopping')
+  if (hobbies.includes('hiking')) {
+    addTag('nature')
+    addTag('adventure')
+    boost('nature', 3)
+    boost('adventure', 2)
   }
 
   if (hobbies.includes('art')) {
-    signals.preferredTags.push('culture')
+    addTag('culture')
+    boost('culture', 2)
   }
 
-  if (hobbies.includes('hiking')) {
-    signals.preferredTags.push('adventure', 'nature')
-    signals.destinationTypes.push('mountain')
+  if (hobbies.includes('shopping')) {
+    addTag('shopping')
+    boost('shopping', 2)
   }
 
-  if (hobbies.includes('surf')) {
-    signals.preferredTags.push('adventure', 'beach')
-    signals.destinationTypes.push('coastal')
+  if (cuisine.includes('japanese') || cuisine.includes('omakase')) {
+    addTag('food')
+    boost('food', 2)
   }
 
-  if (specialEvents.includes('birthday') || specialEvents.includes('anniversary')) {
-    signals.preferredTags.push('celebration', 'romantic')
-  }
+  const tripType = (profileDocument?.tripType || '').toLowerCase()
 
-  const tripType = (payload?.tripType || '').toLowerCase()
-
-  if (tripType.includes('honeymoon')) {
-    signals.preferredTags.push('romantic', 'luxury', 'privacy')
+  if (tripType.includes('honeymoon') || tripType.includes('romantic')) {
+    boost('romance', 5)
+    addTag('romantic')
   }
 
   if (tripType.includes('wellness')) {
-    signals.preferredTags.push('wellness', 'quiet', 'slow travel')
+    boost('wellness', 5)
+    addTag('wellness')
   }
 
   if (tripType.includes('family')) {
-    signals.preferredTags.push('family')
+    boost('family', 5)
+    addTag('family')
   }
 
   if (tripType.includes('celebration')) {
-    signals.preferredTags.push('celebration')
+    boost('luxury', 2)
+    boost('romance', 2)
   }
 
   signals.preferredTags = [...new Set(signals.preferredTags)]
   signals.avoidTags = [...new Set(signals.avoidTags)]
   signals.destinationTypes = [...new Set(signals.destinationTypes)]
-
-  signals.travelStyleSummary = [
-    signals.tripType,
-    signals.budgetBand,
-    ...signals.preferredTags.slice(0, 4),
-    ...signals.destinationTypes.slice(0, 3),
-  ].filter(Boolean)
 
   return signals
 }

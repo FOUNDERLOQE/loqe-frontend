@@ -50,6 +50,25 @@ export const clientProfileDetailQuery = `
     autoSummary,
     travelSignalTags,
     profilePayload,
+    recommendationSnapshots,
+    createdAt
+  }
+`
+
+export const itineraryDraftsQuery = `
+  *[_type == "itineraryDraft"] | order(createdAt desc){
+    _id,
+    title,
+    clientName,
+    destinationTitle,
+    destinationSlug,
+    tripType,
+    originCity,
+    tripLengthDays,
+    travellerCount,
+    budgetBand,
+    plannerNotes,
+    status,
     createdAt
   }
 `

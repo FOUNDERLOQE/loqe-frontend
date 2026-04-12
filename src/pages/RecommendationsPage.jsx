@@ -16,6 +16,22 @@ function buildFallbackSignals(state) {
       tripType: '',
       tripLengthDays: null,
       travellerCount: null,
+      themeWeights: {
+        luxury: 0,
+        romance: 0,
+        wellness: 0,
+        adventure: 0,
+        culture: 0,
+        food: 0,
+        family: 0,
+        nightlife: 0,
+        nature: 0,
+        shopping: 0,
+        slowTravel: 0,
+        privacy: 0,
+        beach: 0,
+        mountain: 0,
+      },
     }
   }
 
@@ -27,6 +43,22 @@ function buildFallbackSignals(state) {
     tripType: state.tripType || '',
     tripLengthDays: state.tripLengthDays || null,
     travellerCount: state.travellerCount || null,
+    themeWeights: {
+      luxury: 0,
+      romance: 0,
+      wellness: 0,
+      adventure: 0,
+      culture: 0,
+      food: 0,
+      family: 0,
+      nightlife: 0,
+      nature: 0,
+      shopping: 0,
+      slowTravel: 0,
+      privacy: 0,
+      beach: 0,
+      mountain: 0,
+    },
   }
 }
 
@@ -63,23 +95,25 @@ function getPlannerLens(signals) {
 
 function getTopReasons(destination, signals) {
   const reasons = []
+  const rawReasons = Array.isArray(destination?.matchReasons)
+    ? destination.matchReasons
+    : []
+
+  rawReasons.forEach((reason) => {
+    if (reasons.length < 3 && reason && !reasons.includes(reason)) {
+      reasons.push(reason)
+    }
+  })
+
   const allTags = [...(destination?.vibeTags || []), ...(destination?.suitableFor || [])].map((tag) =>
     String(tag).toLowerCase()
   )
 
-  signals.preferredTags.forEach((tag) => {
-    if (reasons.length < 3 && allTags.some((item) => item.includes(tag))) {
-      reasons.push(`Strong fit for ${tag}`)
-    }
-  })
-
-  signals.destinationTypes.forEach((tag) => {
-    if (reasons.length < 3 && allTags.some((item) => item.includes(tag))) {
-      reasons.push(`Matches preferred ${tag} setting`)
-    }
-  })
-
-  if (reasons.length < 3 && signals.budgetBand && destination?.budgetBand === signals.budgetBand) {
+  if (
+    reasons.length < 3 &&
+    signals.budgetBand &&
+    destination?.budgetBand === signals.budgetBand
+  ) {
     reasons.push(`Aligned with ${signals.budgetBand} budget band`)
   }
 
@@ -116,13 +150,13 @@ function getTopReasons(destination, signals) {
 
 function getWarnings(destination, signals) {
   const warnings = []
-  const allTags = [...(destination?.vibeTags || []), ...(destination?.suitableFor || [])].map((tag) =>
-    String(tag).toLowerCase()
-  )
+  const rawWarnings = Array.isArray(destination?.matchWarnings)
+    ? destination.matchWarnings
+    : []
 
-  signals.avoidTags.forEach((tag) => {
-    if (warnings.length < 2 && allTags.some((item) => item.includes(tag))) {
-      warnings.push(`Potential mismatch around ${tag}`)
+  rawWarnings.forEach((warning) => {
+    if (warnings.length < 2 && warning && !warnings.includes(warning)) {
+      warnings.push(warning)
     }
   })
 
@@ -194,6 +228,8 @@ function RecommendationsPage() {
   const [destinations, setDestinations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [savingSnapshot, setSavingSnapshot] = useState(false)
+  const [snapshotMessage, setSnapshotMessage] = useState('')
 
   useEffect(() => {
     let mounted = true
@@ -243,12 +279,24 @@ function RecommendationsPage() {
     return buildFallbackSignals(routeState)
   }, [recommendationInput, routeState])
 
-  const rankedDestinations = useMemo(() => {
-    if (!Array.isArray(destinations) || destinations.length === 0) return []
-    return scoreDestinations(destinations, signals)
-  }, [destinations, signals])
+  const savedSnapshotDestinations = useMemo(() => {
+  if (routeState?.source !== 'saved-snapshot') return []
+  return Array.isArray(routeState?.savedSnapshot?.topDestinations)
+    ? routeState.savedSnapshot.topDestinations
+    : []
+}, [routeState])
+
+const rankedDestinations = useMemo(() => {
+  if (routeState?.source === 'saved-snapshot' && savedSnapshotDestinations.length > 0) {
+    return savedSnapshotDestinations
+  }
+
+  if (!Array.isArray(destinations) || destinations.length === 0) return []
+  return scoreDestinations(destinations, signals)
+}, [destinations, signals, routeState, savedSnapshotDestinations])
 
   const topDestinations = rankedDestinations.slice(0, 6)
+
   const bestOverall = topDestinations[0] || null
   const bestRomantic = topDestinations.find((item) =>
     [...(item?.vibeTags || []), ...(item?.suitableFor || [])]
@@ -266,14 +314,75 @@ function RecommendationsPage() {
       .some((tag) => tag.includes('adventure'))
   )
 
-  const pageTitle =
-    routeState?.source === 'saved-profile'
+const pageTitle =
+  routeState?.source === 'saved-snapshot'
+    ? routeState?.snapshotTitle || 'Saved Recommendation Snapshot'
+    : routeState?.source === 'saved-profile'
       ? 'Curated Destination Matches'
       : 'Luxury Travel Recommendations'
 
-  const pageSubtitle = routeState?.clientProfile?.fullName
-    ? `Curated destination options for ${routeState.clientProfile.fullName}, prioritised for fit, style, and pitchability.`
-    : 'Curated destination options ranked against the current trip brief.'
+const pageSubtitle =
+  routeState?.source === 'saved-snapshot'
+    ? `Reopened saved destination shortlist for ${routeState?.clientProfile?.fullName || 'this client'}.`
+    : routeState?.clientProfile?.fullName
+      ? `Curated destination options for ${routeState.clientProfile.fullName}, prioritised for fit, style, and pitchability.`
+      : 'Curated destination options ranked against the current trip brief.'
+
+  async function handleSaveSnapshot() {
+    try {
+      const profileId =
+        routeState?.clientProfile?._id ||
+        recommendationInput?._id ||
+        ''
+
+      if (!profileId) {
+        throw new Error('No saved client profile is attached to this recommendation session.')
+      }
+
+      if (!topDestinations.length) {
+        throw new Error('No recommendations available to save.')
+      }
+
+      setSavingSnapshot(true)
+      setSnapshotMessage('')
+
+      const response = await fetch('/api/save-recommendation-snapshot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profileId,
+          summaryTitle: `Top Recommendations - ${new Date().toLocaleDateString('en-IN')}`,
+          topDestinations,
+        }),
+      })
+
+      const rawText = await response.text()
+      let result = {}
+
+      try {
+        result = rawText ? JSON.parse(rawText) : {}
+      } catch (parseError) {
+        throw new Error(
+          `API did not return valid JSON. Raw response: ${rawText || 'empty response'}`
+        )
+      }
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to save recommendation snapshot')
+      }
+
+      setSnapshotMessage('Recommendation snapshot saved successfully.')
+    } catch (err) {
+      console.error('SAVE_RECOMMENDATION_SNAPSHOT_CLIENT_ERROR', err)
+      setSnapshotMessage(
+        `Error saving recommendations: ${err?.message || 'Unknown error'}`
+      )
+    } finally {
+      setSavingSnapshot(false)
+    }
+  }
 
   return (
     <div className="page page-luxury">
@@ -327,7 +436,9 @@ function RecommendationsPage() {
             <div className="destination-tag-group">
               {(signals.preferredTags || []).length > 0 ? (
                 signals.preferredTags.slice(0, 8).map((tag) => (
-                  <span key={tag} className="destination-tag">{tag}</span>
+                  <span key={tag} className="destination-tag">
+                    {tag}
+                  </span>
                 ))
               ) : (
                 <span className="destination-tag">No strong tags yet</span>
@@ -340,7 +451,9 @@ function RecommendationsPage() {
             <div className="destination-tag-group">
               {(signals.avoidTags || []).length > 0 ? (
                 signals.avoidTags.slice(0, 6).map((tag) => (
-                  <span key={tag} className="destination-tag secondary">{tag}</span>
+                  <span key={tag} className="destination-tag secondary">
+                    {tag}
+                  </span>
                 ))
               ) : (
                 <span className="destination-tag">No active warnings</span>
@@ -353,7 +466,9 @@ function RecommendationsPage() {
             <div className="destination-tag-group">
               {(signals.destinationTypes || []).length > 0 ? (
                 signals.destinationTypes.slice(0, 6).map((tag) => (
-                  <span key={tag} className="destination-tag">{tag}</span>
+                  <span key={tag} className="destination-tag">
+                    {tag}
+                  </span>
                 ))
               ) : (
                 <span className="destination-tag">No specific setting yet</span>
@@ -361,6 +476,21 @@ function RecommendationsPage() {
             </div>
           </div>
         </div>
+
+<div className="recommendation-top-actions">
+  {routeState?.source !== 'saved-snapshot' && (
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={handleSaveSnapshot}
+      disabled={savingSnapshot || topDestinations.length === 0}
+    >
+      {savingSnapshot ? 'Saving snapshot...' : 'Save Recommendation Snapshot'}
+    </button>
+  )}
+
+  {snapshotMessage && <p className="save-message">{snapshotMessage}</p>}
+</div>
       </section>
 
       {!loading && !error && topDestinations.length > 0 && (
@@ -479,7 +609,9 @@ function RecommendationsPage() {
                       <div className="destination-tag-group">
                         {displayTags.length > 0 ? (
                           displayTags.map((tag) => (
-                            <span key={tag} className="destination-tag">{tag}</span>
+                            <span key={tag} className="destination-tag">
+                              {tag}
+                            </span>
                           ))
                         ) : (
                           <span className="destination-tag">General fit</span>
@@ -498,7 +630,13 @@ function RecommendationsPage() {
 
                     <Link
                       to="/itinerary-builder"
-                      state={{ selectedDestination: destination }}
+                      state={{
+                        selectedDestination: {
+                          ...destination,
+                          matchReasons: reasons,
+                        },
+                        clientProfile: routeState?.clientProfile || recommendationInput || null,
+                      }}
                       className="primary-button luxury-button recommendation-action-link"
                     >
                       Add to Itinerary

@@ -1,240 +1,135 @@
+function normalizeTags(destination) {
+  const vibeTags = destination?.vibeTags || []
+  const suitableFor = destination?.suitableFor || []
+  return [...vibeTags, ...suitableFor]
+    .filter(Boolean)
+    .map((tag) => String(tag).toLowerCase())
+}
+
+function inferDestinationThemes(tags) {
+  const has = (needle) => tags.some((tag) => tag.includes(needle))
+
+  return {
+    luxury: has('luxury') || has('ultra luxury') || has('fine dining'),
+    romance: has('romantic'),
+    wellness: has('wellness') || has('spa'),
+    adventure: has('adventure') || has('hiking') || has('wildlife'),
+    culture: has('culture') || has('museums') || has('art') || has('local immersion'),
+    food: has('food') || has('fine dining'),
+    family: has('family'),
+    nightlife: has('nightlife'),
+    nature: has('nature') || has('mountain') || has('wildlife'),
+    shopping: has('shopping'),
+    slowTravel: has('slow travel') || has('resort') || has('relaxation'),
+    privacy: has('privacy') || has('private villa'),
+    beach: has('beach') || has('island') || has('ocean'),
+    mountain: has('mountain'),
+  }
+}
+
+function addReason(reasons, text) {
+  if (!text || reasons.includes(text) || reasons.length >= 4) return
+  reasons.push(text)
+}
+
+function addWarning(warnings, text) {
+  if (!text || warnings.includes(text) || warnings.length >= 3) return
+  warnings.push(text)
+}
+
 export function scoreDestinations(destinations, signals) {
   return destinations
     .map((destination) => {
       let score = 0
-      const matchReasons = []
-      const matchWarnings = []
+      const reasons = []
+      const warnings = []
+      const tags = normalizeTags(destination)
+      const themes = inferDestinationThemes(tags)
 
-      const vibeTags = Array.isArray(destination?.vibeTags) ? destination.vibeTags : []
-      const suitableFor = Array.isArray(destination?.suitableFor) ? destination.suitableFor : []
-      const destinationTypes = Array.isArray(destination?.destinationTypes)
-        ? destination.destinationTypes
-        : []
-      const bestTripTypes = Array.isArray(destination?.bestTripTypes)
-        ? destination.bestTripTypes
-        : []
-      const climateTags = Array.isArray(destination?.climateTags)
-        ? destination.climateTags
-        : []
-      const paceTags = Array.isArray(destination?.paceTags)
-        ? destination.paceTags
-        : []
-      const experienceTags = Array.isArray(destination?.experienceTags)
-        ? destination.experienceTags
-        : []
-      const travelLogistics = Array.isArray(destination?.travelLogistics)
-        ? destination.travelLogistics
-        : []
-
-      const idealTripLength = String(destination?.idealTripLength || '').toLowerCase()
-      const budgetBand = String(destination?.budgetBand || '').trim()
-
-      const allTags = [
-        ...vibeTags,
-        ...suitableFor,
-        ...destinationTypes,
-        ...bestTripTypes,
-        ...climateTags,
-        ...paceTags,
-        ...experienceTags,
-        ...travelLogistics,
-        idealTripLength,
-      ]
-        .filter(Boolean)
-        .map((tag) => String(tag).toLowerCase())
-
-      const uniquePush = (list, value) => {
-        if (!list.includes(value)) list.push(value)
-      }
-
-      ;(signals?.preferredTags || []).forEach((tag) => {
-        const normalizedTag = String(tag).toLowerCase()
-
-        if (allTags.some((item) => item.includes(normalizedTag))) {
-          score += 12
-          uniquePush(matchReasons, `Matches preferred tag: ${tag}`)
-        }
-      })
-
-      ;(signals?.destinationTypes || []).forEach((tag) => {
-        const normalizedTag = String(tag).toLowerCase()
-
-        if (allTags.some((item) => item.includes(normalizedTag))) {
+      signals.preferredTags.forEach((tag) => {
+        if (tags.some((item) => item.includes(tag))) {
           score += 10
-          uniquePush(matchReasons, `Matches destination type: ${tag}`)
+          addReason(reasons, `Aligned with ${tag}`)
         }
       })
 
-      ;(signals?.avoidTags || []).forEach((tag) => {
-        const normalizedTag = String(tag).toLowerCase()
-
-        if (allTags.some((item) => item.includes(normalizedTag))) {
-          score -= 15
-          uniquePush(matchWarnings, `Contains avoid tag: ${tag}`)
+      signals.destinationTypes.forEach((tag) => {
+        if (tags.some((item) => item.includes(tag))) {
+          score += 9
+          addReason(reasons, `Matches preferred ${tag} setting`)
         }
       })
 
-      if (signals?.budgetBand && budgetBand === String(signals.budgetBand).trim()) {
+      signals.avoidTags.forEach((tag) => {
+        if (tags.some((item) => item.includes(tag))) {
+          score -= 16
+          addWarning(warnings, `Potential mismatch around ${tag}`)
+        }
+      })
+
+      if (signals.budgetBand && destination?.budgetBand === signals.budgetBand) {
         score += 10
-        uniquePush(matchReasons, `Matches budget band: ${signals.budgetBand}`)
+        addReason(reasons, `Budget alignment with ${signals.budgetBand}`)
+      } else if (signals.budgetBand && destination?.budgetBand && destination.budgetBand !== signals.budgetBand) {
+        score -= 5
+        addWarning(warnings, `Budget band differs from requested ${signals.budgetBand}`)
       }
 
-      const tripType = String(signals?.tripType || '').toLowerCase()
+      if (themes.luxury) score += signals.themeWeights.luxury * 2.2
+      if (themes.romance) score += signals.themeWeights.romance * 2.3
+      if (themes.wellness) score += signals.themeWeights.wellness * 2.2
+      if (themes.adventure) score += signals.themeWeights.adventure * 2.0
+      if (themes.culture) score += signals.themeWeights.culture * 1.8
+      if (themes.food) score += signals.themeWeights.food * 1.8
+      if (themes.family) score += signals.themeWeights.family * 2.0
+      if (themes.nightlife) score += signals.themeWeights.nightlife * 1.8
+      if (themes.nature) score += signals.themeWeights.nature * 1.7
+      if (themes.shopping) score += signals.themeWeights.shopping * 1.7
+      if (themes.slowTravel) score += signals.themeWeights.slowTravel * 1.9
+      if (themes.privacy) score += signals.themeWeights.privacy * 2.1
+      if (themes.beach) score += signals.themeWeights.beach * 2.0
+      if (themes.mountain) score += signals.themeWeights.mountain * 2.0
 
-      if (
-        tripType &&
-        bestTripTypes.some((item) => String(item).toLowerCase() === tripType)
-      ) {
-        score += 15
-        uniquePush(matchReasons, `Strong fit for trip type: ${signals.tripType}`)
+      const tripType = (signals.tripType || '').toLowerCase()
+
+      if (tripType.includes('honeymoon') && themes.romance) {
+        score += 14
+        addReason(reasons, 'Strong honeymoon positioning')
       }
 
-      if (tripType.includes('honeymoon') || tripType.includes('romantic')) {
-        if (allTags.includes('romantic')) {
-          score += 12
-          uniquePush(matchReasons, 'Strong fit for romantic travel')
-        }
+      if (tripType.includes('wellness') && themes.wellness) {
+        score += 14
+        addReason(reasons, 'Strong wellness-led fit')
       }
 
-      if (tripType.includes('wellness')) {
-        if (allTags.includes('wellness')) {
-          score += 12
-          uniquePush(matchReasons, 'Strong fit for wellness travel')
-        }
+      if (tripType.includes('family') && themes.family) {
+        score += 14
+        addReason(reasons, 'Strong family suitability')
       }
 
-      if (tripType.includes('family')) {
-        if (allTags.includes('family')) {
-          score += 12
-          uniquePush(matchReasons, 'Strong fit for family travel')
-        }
+      if (tripType.includes('celebration') && (themes.luxury || themes.romance)) {
+        score += 10
+        addReason(reasons, 'Good celebration fit')
       }
 
-      if (tripType.includes('celebration')) {
-        if (allTags.includes('celebration') || allTags.includes('romantic')) {
-          score += 10
-          uniquePush(matchReasons, 'Good fit for celebration travel')
-        }
+      if (signals.tripLengthDays && signals.tripLengthDays <= 4 && tags.some((tag) => tag.includes('complex flights'))) {
+        score -= 8
+        addWarning(warnings, 'Trip may feel logistically heavy for a shorter duration')
       }
 
-      if ((signals?.tripLengthDays || 0) <= 4) {
-        if (
-          idealTripLength.includes('short break') ||
-          allTags.includes('easy access') ||
-          allTags.includes('direct access')
-        ) {
-          score += 8
-          uniquePush(matchReasons, 'Good fit for a shorter trip')
-        }
+      if (signals.travellerCount && signals.travellerCount >= 4 && !themes.family && !tags.some((tag) => tag.includes('group'))) {
+        score -= 4
       }
 
-      if ((signals?.tripLengthDays || 0) >= 5 && (signals?.tripLengthDays || 0) <= 7) {
-        if (idealTripLength.includes('4-7 days')) {
-          score += 8
-          uniquePush(matchReasons, 'Well suited for a 4-7 day trip')
-        }
-      }
-
-      if ((signals?.tripLengthDays || 0) >= 8 && (signals?.tripLengthDays || 0) <= 10) {
-        if (idealTripLength.includes('7-10 days')) {
-          score += 8
-          uniquePush(matchReasons, 'Well suited for a 7-10 day trip')
-        }
-      }
-
-      if ((signals?.tripLengthDays || 0) > 10) {
-        if (
-          idealTripLength.includes('10+ days') ||
-          allTags.includes('immersive') ||
-          allTags.includes('slow travel')
-        ) {
-          score += 8
-          uniquePush(matchReasons, 'Good fit for a longer immersive trip')
-        }
-      }
-
-      if ((signals?.travellerCount || 0) >= 3) {
-        if (allTags.includes('group') || allTags.includes('family')) {
-          score += 6
-          uniquePush(matchReasons, 'Works well for multiple travellers')
-        }
-      }
-
-      if ((signals?.travellerCount || 0) === 2) {
-        if (allTags.includes('romantic') || allTags.includes('couples')) {
-          score += 6
-          uniquePush(matchReasons, 'Good fit for two travellers')
-        }
-      }
-
-      if ((signals?.preferredTags || []).includes('luxury')) {
-        if (allTags.includes('luxury') || allTags.includes('ultra luxury')) {
-          score += 8
-          uniquePush(matchReasons, 'Strong luxury alignment')
-        }
-      }
-
-      if ((signals?.preferredTags || []).includes('wellness')) {
-        if (allTags.includes('wellness') || allTags.includes('quiet')) {
-          score += 8
-          uniquePush(matchReasons, 'Strong wellness alignment')
-        }
-      }
-
-      if ((signals?.preferredTags || []).includes('food')) {
-        if (allTags.includes('food') || allTags.includes('fine dining') || allTags.includes('local immersion')) {
-          score += 7
-          uniquePush(matchReasons, 'Strong culinary alignment')
-        }
-      }
-
-      if ((signals?.preferredTags || []).includes('adventure')) {
-        if (allTags.includes('adventure') || allTags.includes('active') || allTags.includes('nature')) {
-          score += 7
-          uniquePush(matchReasons, 'Strong adventure alignment')
-        }
-      }
-
-      if ((signals?.preferredTags || []).includes('culture')) {
-        if (allTags.includes('culture') || allTags.includes('local immersion')) {
-          score += 7
-          uniquePush(matchReasons, 'Strong cultural alignment')
-        }
-      }
-
-      if ((signals?.destinationTypes || []).includes('warm weather')) {
-        if (allTags.includes('warm weather') || allTags.includes('tropical')) {
-          score += 6
-          uniquePush(matchReasons, 'Matches warm weather preference')
-        }
-      }
-
-      if ((signals?.destinationTypes || []).includes('cold climate')) {
-        if (allTags.includes('cold climate')) {
-          score += 6
-          uniquePush(matchReasons, 'Matches cold climate preference')
-        }
-      }
-
-      if ((signals?.avoidTags || []).includes('complex flights')) {
-        if (allTags.includes('complex flights') || allTags.includes('remote transfer')) {
-          score -= 10
-          uniquePush(matchWarnings, 'Travel logistics may be inconvenient')
-        }
-      }
-
-      if ((signals?.avoidTags || []).includes('crowded')) {
-        if (allTags.includes('high energy') || allTags.includes('nightlife') || allTags.includes('city')) {
-          score -= 8
-          uniquePush(matchWarnings, 'May feel busier than preferred')
-        }
+      if (reasons.length === 0) {
+        addReason(reasons, 'Good broad fit against overall brief')
       }
 
       return {
         ...destination,
-        recommendationScore: score,
-        matchReasons,
-        matchWarnings,
+        recommendationScore: Math.round(score),
+        matchReasons: reasons.slice(0, 4),
+        matchWarnings: warnings.slice(0, 3),
       }
     })
     .sort((a, b) => b.recommendationScore - a.recommendationScore)

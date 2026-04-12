@@ -32,6 +32,7 @@ export default async function handler(req, res) {
     const body = req.body || {}
     const profileId = body.profileId || ''
     const topDestinations = Array.isArray(body.topDestinations) ? body.topDestinations : []
+    const summaryTitle = body.summaryTitle || 'Recommendation Snapshot'
 
     if (!profileId) {
       return res.status(400).json({
@@ -40,30 +41,41 @@ export default async function handler(req, res) {
       })
     }
 
+    if (!topDestinations.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'No top destinations provided',
+      })
+    }
+
     const snapshot = {
-      savedAt: new Date().toISOString(),
-      topDestinations: topDestinations.map((item) => ({
-        destinationId: item.destinationId || '',
+      _key: `snapshot-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      summaryTitle,
+      topDestinations: topDestinations.slice(0, 6).map((item, index) => ({
+        _key: `destination-${Date.now()}-${index}`,
+        destinationId: item._id || item.destinationId || '',
         title: item.title || '',
-        slug: item.slug || '',
+        slug: item.slug?.current || item.slug || '',
         country: item.country || '',
         region: item.region || '',
         budgetBand: item.budgetBand || '',
         recommendationScore: Number(item.recommendationScore || 0),
-        matchReasons: Array.isArray(item.matchReasons) ? item.matchReasons : [],
-        matchWarnings: Array.isArray(item.matchWarnings) ? item.matchWarnings : [],
+        matchReasons: Array.isArray(item.matchReasons) ? item.matchReasons.slice(0, 4) : [],
+        matchWarnings: Array.isArray(item.matchWarnings) ? item.matchWarnings.slice(0, 3) : [],
       })),
     }
 
-    await sanityWrite
+    const result = await sanityWrite
       .patch(profileId)
       .setIfMissing({ recommendationSnapshots: [] })
       .append('recommendationSnapshots', [snapshot])
-      .set({ status: 'recommended' })
       .commit()
 
     return res.status(200).json({
       success: true,
+      id: result._id,
+      snapshotCreatedAt: snapshot.createdAt,
     })
   } catch (error) {
     console.error('SAVE_RECOMMENDATION_SNAPSHOT_ERROR', error)
