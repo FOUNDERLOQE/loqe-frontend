@@ -381,11 +381,11 @@ function RecommendationsPage() {
   }, [profileDoc, routeClientProfile])
 
   const signals = useMemo(() => {
-    if (recommendationInput?.profilePayload) {
+    if (recommendationInput) {
       return profileToSignals(recommendationInput)
     }
 
-    return buildFallbackSignals(recommendationInput)
+    return buildFallbackSignals(null)
   }, [recommendationInput])
 
   const selectedSnapshot = useMemo(() => {
