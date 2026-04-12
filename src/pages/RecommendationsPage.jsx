@@ -1,10 +1,69 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import DestinationCard from '../components/DestinationCard'
 import { client } from '../lib/sanity'
 import { destinationsQuery } from '../lib/queries'
 import { profileToSignals } from '../lib/profileToSignals'
 import { scoreDestinations } from '../lib/scoreDestinations'
+
+const clientProfileByIdQuery = `
+  *[_type == "clientProfile" && _id == $id][0]{
+    _id,
+    _createdAt,
+    _updatedAt,
+    clientName,
+    fullName,
+    name,
+    firstName,
+    lastName,
+    email,
+    phone,
+    company,
+    nationality,
+    location,
+    cityOfResidence,
+    tripName,
+    tripType,
+    purposeOfTravel,
+    travelStyle,
+    luxuryStyle,
+    pace,
+    vibe,
+    occasion,
+    tripLength,
+    tripLengthDays,
+    duration,
+    nights,
+    days,
+    budget,
+    budgetBand,
+    budgetRange,
+    budgetPerPerson,
+    totalBudget,
+    partySize,
+    travellerCount,
+    travelers,
+    adults,
+    children,
+    kids,
+    departureCity,
+    originCity,
+    preferredDeparture,
+    preferredTravelMonth,
+    preferredMonths,
+    travelMonths,
+    dateFlexibility,
+    notes,
+    summary,
+    autoSummary,
+    questionnaireOutput,
+    profilePayload,
+    recommendationSnapshots[]{
+      ...,
+      _key
+    }
+  }
+`
 
 function buildFallbackSignals(state) {
   if (!state) {
@@ -221,79 +280,171 @@ function getDisplayTags(destination, signals) {
   return [...new Set(priority)].slice(0, 6)
 }
 
+function getDisplayName(profileDoc) {
+  if (!profileDoc) return 'this client'
+
+  const joined = [profileDoc.firstName, profileDoc.lastName].filter(Boolean).join(' ').trim()
+
+  return (
+    profileDoc.fullName ||
+    profileDoc.clientName ||
+    profileDoc.name ||
+    joined ||
+    profileDoc.email ||
+    'this client'
+  )
+}
+
+function normalizeSnapshotDestinations(items) {
+  if (!Array.isArray(items)) return []
+
+  return items.map((item, index) => ({
+    _id: item?._id || item?.destinationId || `snapshot-destination-${index}`,
+    title: item?.title || item?.destinationTitle || item?.name || 'Untitled Destination',
+    slug: item?.slug || '',
+    country: item?.country || '',
+    region: item?.region || '',
+    summary: item?.summary || '',
+    heroImage: item?.heroImage || null,
+    heroVideoUrl: item?.heroVideoUrl || '',
+    budgetBand: item?.budgetBand || '',
+    vibeTags: Array.isArray(item?.vibeTags) ? item.vibeTags : [],
+    suitableFor: Array.isArray(item?.suitableFor) ? item.suitableFor : [],
+    destinationTypes: Array.isArray(item?.destinationTypes) ? item.destinationTypes : [],
+    bestTripTypes: Array.isArray(item?.bestTripTypes) ? item.bestTripTypes : [],
+    climateTags: Array.isArray(item?.climateTags) ? item.climateTags : [],
+    paceTags: Array.isArray(item?.paceTags) ? item.paceTags : [],
+    experienceTags: Array.isArray(item?.experienceTags) ? item.experienceTags : [],
+    idealTripLength: item?.idealTripLength || '',
+    travelLogistics: item?.travelLogistics || '',
+    recommendationScore: item?.recommendationScore || 0,
+    matchReasons: Array.isArray(item?.matchReasons) ? item.matchReasons : [],
+    matchWarnings: Array.isArray(item?.matchWarnings) ? item.matchWarnings : [],
+  }))
+}
+
 function RecommendationsPage() {
+  const { id, profileId } = useParams()
   const location = useLocation()
   const routeState = location.state || {}
+
+  const resolvedProfileId =
+    id ||
+    profileId ||
+    routeState?.clientProfile?._id ||
+    routeState?.profileId ||
+    ''
 
   const [destinations, setDestinations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savingSnapshot, setSavingSnapshot] = useState(false)
   const [snapshotMessage, setSnapshotMessage] = useState('')
+  const [profileDoc, setProfileDoc] = useState(routeState?.clientProfile || null)
 
   useEffect(() => {
     let mounted = true
 
-    client
-      .fetch(destinationsQuery)
-      .then((data) => {
+    async function loadRecommendationsContext() {
+      try {
+        setLoading(true)
+        setError('')
+        setSnapshotMessage('')
+
+        const fetchedDestinations = await client.fetch(destinationsQuery)
+
         if (!mounted) return
-        setDestinations(Array.isArray(data) ? data : [])
-      })
-      .catch((err) => {
-        console.error('DESTINATIONS_FETCH_ERROR', err)
+
+        setDestinations(Array.isArray(fetchedDestinations) ? fetchedDestinations : [])
+
+        let resolvedProfile = routeState?.clientProfile || null
+
+        if (!resolvedProfile?._id && resolvedProfileId) {
+          resolvedProfile = await client.fetch(clientProfileByIdQuery, { id: resolvedProfileId })
+        }
+
         if (!mounted) return
-        setError(err.message || 'Failed to load destinations')
-      })
-      .finally(() => {
+
+        setProfileDoc(resolvedProfile || null)
+      } catch (err) {
+        console.error('RECOMMENDATIONS_LOAD_ERROR', err)
+        if (!mounted) return
+        setError(err?.message || 'Failed to load recommendations')
+      } finally {
         if (!mounted) return
         setLoading(false)
-      })
+      }
+    }
+
+    loadRecommendationsContext()
 
     return () => {
       mounted = false
     }
-  }, [])
+  }, [resolvedProfileId, routeState])
 
   const recommendationInput = useMemo(() => {
+    if (profileDoc) return profileDoc
+
     if (routeState?.source === 'saved-profile' && routeState?.clientProfile) {
       return routeState.clientProfile
     }
 
     if (routeState?.clientProfile) {
-      return routeState
+      return routeState.clientProfile
     }
 
     return null
-  }, [routeState])
+  }, [profileDoc, routeState])
 
   const signals = useMemo(() => {
     if (recommendationInput?.profilePayload) {
       return profileToSignals(recommendationInput)
     }
 
-    if (recommendationInput?.clientProfile) {
-      return profileToSignals(recommendationInput)
-    }
-
-    return buildFallbackSignals(routeState)
+    return buildFallbackSignals(recommendationInput || routeState)
   }, [recommendationInput, routeState])
 
+  const selectedSnapshot = useMemo(() => {
+    const explicitSnapshot =
+      routeState?.savedSnapshot ||
+      null
+
+    if (explicitSnapshot) return explicitSnapshot
+
+    const snapshotId = new URLSearchParams(location.search).get('snapshotId')
+    if (!snapshotId || !profileDoc?.recommendationSnapshots) return null
+
+    return (
+      profileDoc.recommendationSnapshots.find((snapshot) => {
+        const key = snapshot?._key || snapshot?._id || ''
+        return String(key) === String(snapshotId)
+      }) || null
+    )
+  }, [location.search, profileDoc, routeState])
+
   const savedSnapshotDestinations = useMemo(() => {
-  if (routeState?.source !== 'saved-snapshot') return []
-  return Array.isArray(routeState?.savedSnapshot?.topDestinations)
-    ? routeState.savedSnapshot.topDestinations
-    : []
-}, [routeState])
+    if (!selectedSnapshot) return []
 
-const rankedDestinations = useMemo(() => {
-  if (routeState?.source === 'saved-snapshot' && savedSnapshotDestinations.length > 0) {
-    return savedSnapshotDestinations
-  }
+    const raw =
+      selectedSnapshot?.topDestinations ||
+      selectedSnapshot?.destinations ||
+      selectedSnapshot?.recommendedDestinations ||
+      selectedSnapshot?.results ||
+      []
 
-  if (!Array.isArray(destinations) || destinations.length === 0) return []
-  return scoreDestinations(destinations, signals)
-}, [destinations, signals, routeState, savedSnapshotDestinations])
+    return normalizeSnapshotDestinations(raw)
+  }, [selectedSnapshot])
+
+  const rankedDestinations = useMemo(() => {
+    if (savedSnapshotDestinations.length > 0) {
+      return savedSnapshotDestinations
+    }
+
+    if (!Array.isArray(destinations) || destinations.length === 0) return []
+
+    return scoreDestinations(destinations, signals)
+  }, [destinations, signals, savedSnapshotDestinations])
 
   const topDestinations = rankedDestinations.slice(0, 6)
 
@@ -314,28 +465,23 @@ const rankedDestinations = useMemo(() => {
       .some((tag) => tag.includes('adventure'))
   )
 
-const pageTitle =
-  routeState?.source === 'saved-snapshot'
-    ? routeState?.snapshotTitle || 'Saved Recommendation Snapshot'
-    : routeState?.source === 'saved-profile'
+  const pageTitle = selectedSnapshot
+    ? selectedSnapshot?.title || selectedSnapshot?.summaryTitle || 'Saved Recommendation Snapshot'
+    : profileDoc
       ? 'Curated Destination Matches'
       : 'Luxury Travel Recommendations'
 
-const pageSubtitle =
-  routeState?.source === 'saved-snapshot'
-    ? `Reopened saved destination shortlist for ${routeState?.clientProfile?.fullName || 'this client'}.`
-    : routeState?.clientProfile?.fullName
-      ? `Curated destination options for ${routeState.clientProfile.fullName}, prioritised for fit, style, and pitchability.`
+  const pageSubtitle = selectedSnapshot
+    ? `Reopened saved destination shortlist for ${getDisplayName(profileDoc)}.`
+    : profileDoc
+      ? `Curated destination options for ${getDisplayName(profileDoc)}, prioritised for fit, style, and pitchability.`
       : 'Curated destination options ranked against the current trip brief.'
 
   async function handleSaveSnapshot() {
     try {
-      const profileId =
-        routeState?.clientProfile?._id ||
-        recommendationInput?._id ||
-        ''
+      const activeProfileId = profileDoc?._id || resolvedProfileId || ''
 
-      if (!profileId) {
+      if (!activeProfileId) {
         throw new Error('No saved client profile is attached to this recommendation session.')
       }
 
@@ -352,7 +498,7 @@ const pageSubtitle =
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          profileId,
+          profileId: activeProfileId,
           summaryTitle: `Top Recommendations - ${new Date().toLocaleDateString('en-IN')}`,
           topDestinations,
         }),
@@ -374,6 +520,11 @@ const pageSubtitle =
       }
 
       setSnapshotMessage('Recommendation snapshot saved successfully.')
+
+      if (profileDoc?._id) {
+        const refreshedProfile = await client.fetch(clientProfileByIdQuery, { id: profileDoc._id })
+        setProfileDoc(refreshedProfile || profileDoc)
+      }
     } catch (err) {
       console.error('SAVE_RECOMMENDATION_SNAPSHOT_CLIENT_ERROR', err)
       setSnapshotMessage(
@@ -387,8 +538,11 @@ const pageSubtitle =
   return (
     <div className="page page-luxury">
       <div className="page-topbar">
-        <Link to="/" className="back-link">
-          ← Back to home
+        <Link
+          to={profileDoc?._id ? `/client-profiles/${profileDoc._id}` : '/client-profiles'}
+          className="back-link"
+        >
+          ← Back to client profile
         </Link>
       </div>
 
@@ -477,20 +631,20 @@ const pageSubtitle =
           </div>
         </div>
 
-<div className="recommendation-top-actions">
-  {routeState?.source !== 'saved-snapshot' && (
-    <button
-      type="button"
-      className="secondary-button"
-      onClick={handleSaveSnapshot}
-      disabled={savingSnapshot || topDestinations.length === 0}
-    >
-      {savingSnapshot ? 'Saving snapshot...' : 'Save Recommendation Snapshot'}
-    </button>
-  )}
+        <div className="recommendation-top-actions">
+          {!selectedSnapshot && (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleSaveSnapshot}
+              disabled={savingSnapshot || topDestinations.length === 0}
+            >
+              {savingSnapshot ? 'Saving snapshot...' : 'Save Recommendation Snapshot'}
+            </button>
+          )}
 
-  {snapshotMessage && <p className="save-message">{snapshotMessage}</p>}
-</div>
+          {snapshotMessage && <p className="save-message">{snapshotMessage}</p>}
+        </div>
       </section>
 
       {!loading && !error && topDestinations.length > 0 && (
@@ -556,7 +710,7 @@ const pageSubtitle =
               const pitchLine = getPitchLine(destination, signals)
 
               return (
-                <article key={destination._id} className="glass-card recommendation-luxury-card">
+                <article key={destination._id || `${destination.title}-${index}`} className="glass-card recommendation-luxury-card">
                   <div className="recommendation-luxury-top">
                     <div>
                       <p className="section-kicker">Recommendation #{index + 1}</p>
@@ -622,20 +776,21 @@ const pageSubtitle =
 
                   <div className="recommendation-actions">
                     <Link
-                      to={`/destination/${destination.slug?.current || destination.slug}`}
+                      to={`/destination/${destination.slug?.current || destination.slug || ''}`}
                       className="secondary-button recommendation-action-link"
                     >
                       View Destination
                     </Link>
 
                     <Link
-                      to="/itinerary-builder"
+                      to={profileDoc?._id ? `/client-profiles/${profileDoc._id}/itinerary-builder` : '/itinerary-builder'}
                       state={{
                         selectedDestination: {
                           ...destination,
                           matchReasons: reasons,
                         },
-                        clientProfile: routeState?.clientProfile || recommendationInput || null,
+                        clientProfile: profileDoc || recommendationInput || null,
+                        profileId: profileDoc?._id || resolvedProfileId || '',
                       }}
                       className="primary-button luxury-button recommendation-action-link"
                     >
