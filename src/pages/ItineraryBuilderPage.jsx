@@ -57,6 +57,27 @@ const clientProfileByIdQuery = `
   }
 `
 
+const itineraryDraftByIdQuery = `
+  *[_type == "itineraryDraft" && _id == $draftId][0]{
+    _id,
+    _createdAt,
+    _updatedAt,
+    title,
+    name,
+    status,
+    summary,
+    notes,
+    tripName,
+    version,
+    dayCount,
+    nights,
+    startDate,
+    endDate,
+    clientProfile,
+    profileId
+  }
+`
+
 const itineraryDraftsByProfileQuery = `
   *[
     _type == "itineraryDraft" &&
@@ -147,6 +168,19 @@ function getTravellerCount(profileDoc) {
   return parts.length ? parts.join(', ') : '—'
 }
 
+function dedupeDrafts(items) {
+  const seen = new Set()
+  const output = []
+
+  for (const item of items) {
+    if (!item?._id || seen.has(item._id)) continue
+    seen.add(item._id)
+    output.push(item)
+  }
+
+  return output
+}
+
 function ItineraryBuilderPage() {
   const { id, profileId } = useParams()
   const location = useLocation()
@@ -156,7 +190,6 @@ function ItineraryBuilderPage() {
     location.state?.selectedDestination || location.state?.selectedRecommendation || null
   const stateProfileId = location.state?.profileId || ''
   const routedProfileId = routeClientProfile?._id || stateProfileId || ''
-
   const resolvedProfileId = id || profileId || routedProfileId || ''
 
   const [loading, setLoading] = useState(true)
@@ -235,6 +268,17 @@ function ItineraryBuilderPage() {
       payload?.tripVibeWords,
     ].filter(Boolean)
   }, [profileDoc])
+
+  async function refreshDraftsForProfile(currentProfileId) {
+    if (!currentProfileId) return
+
+    const drafts = await client.fetch(itineraryDraftsByProfileQuery, {
+      id: currentProfileId,
+      draftId: `drafts.${currentProfileId}`,
+    })
+
+    setItineraryDrafts(Array.isArray(drafts) ? drafts : [])
+  }
 
   async function handleCreateDraft() {
     try {
@@ -319,12 +363,21 @@ function ItineraryBuilderPage() {
 
       setSaveMessage('Itinerary draft created successfully in Sanity.')
 
-      const drafts = await client.fetch(itineraryDraftsByProfileQuery, {
-        id: profileDoc._id,
-        draftId: `drafts.${profileDoc._id}`,
-      })
+      if (result.draftId) {
+        const createdDraft = await client.fetch(itineraryDraftByIdQuery, {
+          draftId: result.draftId,
+        })
 
-      setItineraryDrafts(Array.isArray(drafts) ? drafts : [])
+        if (createdDraft?._id) {
+          setItineraryDrafts((prev) => dedupeDrafts([createdDraft, ...prev]))
+        }
+      }
+
+      setTimeout(() => {
+        refreshDraftsForProfile(profileDoc._id).catch((err) => {
+          console.error('ITINERARY_DRAFTS_REFRESH_ERROR', err)
+        })
+      }, 1200)
     } catch (err) {
       console.error('CREATE_ITINERARY_DRAFT_CLIENT_ERROR', err)
       setSaveMessage(`Error creating itinerary draft: ${err?.message || 'Unknown error'}`)
