@@ -62,7 +62,11 @@ const itineraryDraftsByProfileQuery = `
     _type == "itineraryDraft" &&
     (
       clientProfile._ref == $id ||
-      clientProfile->_id == $id
+      clientProfile->_id == $id ||
+      clientProfile._ref == $draftId ||
+      clientProfile->_id == $draftId ||
+      profileId == $id ||
+      profileId == $draftId
     )
   ] | order(coalesce(updatedAt, _updatedAt, _createdAt) desc){
     _id,
@@ -78,7 +82,9 @@ const itineraryDraftsByProfileQuery = `
     dayCount,
     nights,
     startDate,
-    endDate
+    endDate,
+    clientProfile,
+    profileId
   }
 `
 
@@ -310,7 +316,10 @@ function ItineraryBuilderPage() {
 
       setSaveMessage('Itinerary draft created successfully in Sanity.')
 
-      const drafts = await client.fetch(itineraryDraftsByProfileQuery, { id: profileDoc._id })
+      const drafts = await client.fetch(itineraryDraftsByProfileQuery, {
+        id: profile._id,
+        draftId: `drafts.${profile._id}`,
+      })
       setItineraryDrafts(Array.isArray(drafts) ? drafts : [])
     } catch (err) {
       console.error('CREATE_ITINERARY_DRAFT_CLIENT_ERROR', err)
