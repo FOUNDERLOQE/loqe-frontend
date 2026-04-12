@@ -154,9 +154,7 @@ function getPlannerLens(signals) {
 
 function getTopReasons(destination, signals) {
   const reasons = []
-  const rawReasons = Array.isArray(destination?.matchReasons)
-    ? destination.matchReasons
-    : []
+  const rawReasons = Array.isArray(destination?.matchReasons) ? destination.matchReasons : []
 
   rawReasons.forEach((reason) => {
     if (reasons.length < 3 && reason && !reasons.includes(reason)) {
@@ -209,9 +207,7 @@ function getTopReasons(destination, signals) {
 
 function getWarnings(destination, signals) {
   const warnings = []
-  const rawWarnings = Array.isArray(destination?.matchWarnings)
-    ? destination.matchWarnings
-    : []
+  const rawWarnings = Array.isArray(destination?.matchWarnings) ? destination.matchWarnings : []
 
   rawWarnings.forEach((warning) => {
     if (warnings.length < 2 && warning && !warnings.includes(warning)) {
@@ -326,21 +322,19 @@ function normalizeSnapshotDestinations(items) {
 function RecommendationsPage() {
   const { id, profileId } = useParams()
   const location = useLocation()
-  const routeState = location.state || {}
 
-  const resolvedProfileId =
-    id ||
-    profileId ||
-    routeState?.clientProfile?._id ||
-    routeState?.profileId ||
-    ''
+  const routeClientProfile = location.state?.clientProfile || null
+  const stateProfileId = location.state?.profileId || ''
+  const routedProfileId = routeClientProfile?._id || stateProfileId || ''
+  const resolvedProfileId = id || profileId || routedProfileId || ''
 
+  const explicitSavedSnapshot = location.state?.savedSnapshot || null
   const [destinations, setDestinations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savingSnapshot, setSavingSnapshot] = useState(false)
   const [snapshotMessage, setSnapshotMessage] = useState('')
-  const [profileDoc, setProfileDoc] = useState(routeState?.clientProfile || null)
+  const [profileDoc, setProfileDoc] = useState(routeClientProfile)
 
   useEffect(() => {
     let mounted = true
@@ -353,11 +347,7 @@ function RecommendationsPage() {
 
         const fetchedDestinations = await client.fetch(destinationsQuery)
 
-        if (!mounted) return
-
-        setDestinations(Array.isArray(fetchedDestinations) ? fetchedDestinations : [])
-
-        let resolvedProfile = routeState?.clientProfile || null
+        let resolvedProfile = routeClientProfile
 
         if (!resolvedProfile?._id && resolvedProfileId) {
           resolvedProfile = await client.fetch(clientProfileByIdQuery, { id: resolvedProfileId })
@@ -365,6 +355,7 @@ function RecommendationsPage() {
 
         if (!mounted) return
 
+        setDestinations(Array.isArray(fetchedDestinations) ? fetchedDestinations : [])
         setProfileDoc(resolvedProfile || null)
       } catch (err) {
         console.error('RECOMMENDATIONS_LOAD_ERROR', err)
@@ -381,36 +372,24 @@ function RecommendationsPage() {
     return () => {
       mounted = false
     }
-  }, [resolvedProfileId, routeState])
+  }, [resolvedProfileId, routeClientProfile])
 
   const recommendationInput = useMemo(() => {
     if (profileDoc) return profileDoc
-
-    if (routeState?.source === 'saved-profile' && routeState?.clientProfile) {
-      return routeState.clientProfile
-    }
-
-    if (routeState?.clientProfile) {
-      return routeState.clientProfile
-    }
-
+    if (routeClientProfile) return routeClientProfile
     return null
-  }, [profileDoc, routeState])
+  }, [profileDoc, routeClientProfile])
 
   const signals = useMemo(() => {
     if (recommendationInput?.profilePayload) {
       return profileToSignals(recommendationInput)
     }
 
-    return buildFallbackSignals(recommendationInput || routeState)
-  }, [recommendationInput, routeState])
+    return buildFallbackSignals(recommendationInput)
+  }, [recommendationInput])
 
   const selectedSnapshot = useMemo(() => {
-    const explicitSnapshot =
-      routeState?.savedSnapshot ||
-      null
-
-    if (explicitSnapshot) return explicitSnapshot
+    if (explicitSavedSnapshot) return explicitSavedSnapshot
 
     const snapshotId = new URLSearchParams(location.search).get('snapshotId')
     if (!snapshotId || !profileDoc?.recommendationSnapshots) return null
@@ -421,7 +400,7 @@ function RecommendationsPage() {
         return String(key) === String(snapshotId)
       }) || null
     )
-  }, [location.search, profileDoc, routeState])
+  }, [explicitSavedSnapshot, location.search, profileDoc])
 
   const savedSnapshotDestinations = useMemo(() => {
     if (!selectedSnapshot) return []
@@ -509,7 +488,7 @@ function RecommendationsPage() {
 
       try {
         result = rawText ? JSON.parse(rawText) : {}
-      } catch (parseError) {
+      } catch {
         throw new Error(
           `API did not return valid JSON. Raw response: ${rawText || 'empty response'}`
         )
@@ -527,9 +506,7 @@ function RecommendationsPage() {
       }
     } catch (err) {
       console.error('SAVE_RECOMMENDATION_SNAPSHOT_CLIENT_ERROR', err)
-      setSnapshotMessage(
-        `Error saving recommendations: ${err?.message || 'Unknown error'}`
-      )
+      setSnapshotMessage(`Error saving recommendations: ${err?.message || 'Unknown error'}`)
     } finally {
       setSavingSnapshot(false)
     }
@@ -647,6 +624,18 @@ function RecommendationsPage() {
         </div>
       </section>
 
+      {loading && (
+        <div className="glass-card profiles-empty-state">
+          <p>Loading recommendations...</p>
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="glass-card profiles-empty-state">
+          <p>{error}</p>
+        </div>
+      )}
+
       {!loading && !error && topDestinations.length > 0 && (
         <section className="recommendation-highlights-grid">
           <div className="glass-card recommendation-highlight-card">
@@ -673,18 +662,6 @@ function RecommendationsPage() {
             <p>{bestAdventure ? getPitchLine(bestAdventure, signals) : 'No strong adventure standout yet.'}</p>
           </div>
         </section>
-      )}
-
-      {loading && (
-        <div className="glass-card profiles-empty-state">
-          <p>Loading recommendations...</p>
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="glass-card profiles-empty-state">
-          <p>{error}</p>
-        </div>
       )}
 
       {!loading && !error && topDestinations.length === 0 && (
@@ -789,7 +766,7 @@ function RecommendationsPage() {
                           ...destination,
                           matchReasons: reasons,
                         },
-                        clientProfile: profileDoc || recommendationInput || null,
+                        clientProfile: profileDoc || null,
                         profileId: profileDoc?._id || resolvedProfileId || '',
                       }}
                       className="primary-button luxury-button recommendation-action-link"

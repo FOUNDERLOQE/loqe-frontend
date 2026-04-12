@@ -144,22 +144,20 @@ function getTravellerCount(profileDoc) {
 function ItineraryBuilderPage() {
   const { id, profileId } = useParams()
   const location = useLocation()
-  const routeState = location.state || {}
 
-  const resolvedProfileId =
-    id ||
-    profileId ||
-    routeState?.clientProfile?._id ||
-    routeState?.profileId ||
-    ''
+  const routeClientProfile = location.state?.clientProfile || null
+  const selectedDestinationFromState =
+    location.state?.selectedDestination || location.state?.selectedRecommendation || null
+  const stateProfileId = location.state?.profileId || ''
+  const routedProfileId = routeClientProfile?._id || stateProfileId || ''
+
+  const resolvedProfileId = id || profileId || routedProfileId || ''
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [profileDoc, setProfileDoc] = useState(null)
+  const [profileDoc, setProfileDoc] = useState(routeClientProfile)
   const [itineraryDrafts, setItineraryDrafts] = useState([])
-  const [selectedRecommendation, setSelectedRecommendation] = useState(
-    routeState?.selectedDestination || routeState?.selectedRecommendation || null
-  )
+  const [selectedRecommendation, setSelectedRecommendation] = useState(selectedDestinationFromState)
   const [creatingDraft, setCreatingDraft] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
 
@@ -172,13 +170,11 @@ function ItineraryBuilderPage() {
         setError('')
         setSaveMessage('')
 
-        const routedProfile = routeState?.clientProfile || null
-
-        if (!resolvedProfileId && !routedProfile) {
+        if (!resolvedProfileId && !routeClientProfile?._id) {
           throw new Error('No client profile ID found for itinerary builder.')
         }
 
-        let profile = routedProfile
+        let profile = routeClientProfile
 
         if (!profile?._id) {
           profile = await client.fetch(clientProfileByIdQuery, { id: resolvedProfileId })
@@ -193,6 +189,7 @@ function ItineraryBuilderPage() {
         if (!cancelled) {
           setProfileDoc(profile)
           setItineraryDrafts(Array.isArray(drafts) ? drafts : [])
+          setSelectedRecommendation(selectedDestinationFromState)
         }
       } catch (err) {
         console.error('ITINERARY_BUILDER_LOAD_ERROR', err)
@@ -211,7 +208,7 @@ function ItineraryBuilderPage() {
     return () => {
       cancelled = true
     }
-  }, [resolvedProfileId, routeState])
+  }, [resolvedProfileId, routeClientProfile, selectedDestinationFromState])
 
   const travelStyleSummary = useMemo(() => {
     const payload = profileDoc?.profilePayload || {}
@@ -301,7 +298,7 @@ function ItineraryBuilderPage() {
 
       try {
         result = rawText ? JSON.parse(rawText) : {}
-      } catch (parseError) {
+      } catch {
         throw new Error(
           `API did not return valid JSON. Raw response: ${rawText || 'empty response'}`
         )
@@ -317,9 +314,7 @@ function ItineraryBuilderPage() {
       setItineraryDrafts(Array.isArray(drafts) ? drafts : [])
     } catch (err) {
       console.error('CREATE_ITINERARY_DRAFT_CLIENT_ERROR', err)
-      setSaveMessage(
-        `Error creating itinerary draft: ${err?.message || 'Unknown error'}`
-      )
+      setSaveMessage(`Error creating itinerary draft: ${err?.message || 'Unknown error'}`)
     } finally {
       setCreatingDraft(false)
     }
