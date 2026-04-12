@@ -54,3 +54,42 @@ export const clientProfileDetailQuery = `
     createdAt
   }
 `
+
+export const itineraryDraftsQuery = `
+  *[_type == "itineraryDraft"] | order(createdAt desc){
+    _id,
+    title,
+    clientName,
+    destinationTitle,
+    destinationSlug,
+    tripType,
+    originCity,
+    tripLengthDays,
+    travellerCount,
+    budgetBand,
+    plannerNotes,
+    status,
+    createdAt
+  }
+`
+
+export const itineraryDraftDetailQuery = `
+  *[_type == "itineraryDraft" && _id == $id][0]{
+    _id,
+    title,
+    clientName,
+    destinationTitle,
+    destinationSlug,
+    tripType,
+    originCity,
+    tripLengthDays,
+    travellerCount,
+    budgetBand,
+    travelStyleSummary,
+    whyThisDestination,
+    plannerNotes,
+    status,
+    createdAt,
+    days
+  }
+`
