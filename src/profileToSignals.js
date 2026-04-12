@@ -5,10 +5,27 @@ export function profileToSignals(profileDocument) {
     preferredTags: [],
     avoidTags: [],
     destinationTypes: [],
-    budgetBand: profileDocument?.budgetBand || '',
-    tripType: profileDocument?.tripType || '',
-    tripLengthDays: profileDocument?.tripLengthDays || null,
-    travellerCount: profileDocument?.travellerCount || null,
+    budgetBand:
+      profileDocument?.budgetBand ||
+      profileDocument?.budgetRange ||
+      profileDocument?.budget ||
+      '',
+    tripType:
+      profileDocument?.tripType ||
+      profileDocument?.purposeOfTravel ||
+      '',
+    tripLengthDays:
+      profileDocument?.tripLengthDays ||
+      profileDocument?.tripLength ||
+      profileDocument?.duration ||
+      profileDocument?.nights ||
+      profileDocument?.days ||
+      null,
+    travellerCount:
+      profileDocument?.travellerCount ||
+      profileDocument?.partySize ||
+      profileDocument?.travelers ||
+      null,
 
     themeWeights: {
       luxury: 0,
@@ -29,15 +46,15 @@ export function profileToSignals(profileDocument) {
   }
 
   const addTag = (tag) => {
-    if (tag) signals.preferredTags.push(tag)
+    if (tag) signals.preferredTags.push(String(tag).toLowerCase())
   }
 
   const addAvoid = (tag) => {
-    if (tag) signals.avoidTags.push(tag)
+    if (tag) signals.avoidTags.push(String(tag).toLowerCase())
   }
 
   const addType = (tag) => {
-    if (tag) signals.destinationTypes.push(tag)
+    if (tag) signals.destinationTypes.push(String(tag).toLowerCase())
   }
 
   const boost = (theme, points = 1) => {
@@ -45,6 +62,28 @@ export function profileToSignals(profileDocument) {
       signals.themeWeights[theme] += points
     }
   }
+
+  const blob = [
+    profileDocument?.tripType,
+    profileDocument?.purposeOfTravel,
+    profileDocument?.travelStyle,
+    profileDocument?.luxuryStyle,
+    profileDocument?.vibe,
+    profileDocument?.summary,
+    profileDocument?.autoSummary,
+    profileDocument?.questionnaireOutput,
+    payload?.tripVibeWords,
+    payload?.dreamExperiences,
+    payload?.favoritePastDestinationsWhy,
+    payload?.wontReturnDestinationsWhy,
+    payload?.favoriteCuisinesDishes,
+    payload?.hobbiesPassions,
+    payload?.accommodationMustHaves,
+    payload?.absoluteDealBreakers,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
 
   const vibeWords = (payload.tripVibeWords || '').toLowerCase()
   const dealBreakers = (payload.absoluteDealBreakers || '').toLowerCase()
@@ -54,8 +93,9 @@ export function profileToSignals(profileDocument) {
   const wontReturn = (payload.wontReturnDestinationsWhy || '').toLowerCase()
   const hobbies = (payload.hobbiesPassions || '').toLowerCase()
   const cuisine = (payload.favoriteCuisinesDishes || '').toLowerCase()
-
   const energy = (payload.travelEnergyDrink || '').toLowerCase()
+
+  const hasText = (needle) => blob.includes(needle)
 
   if (energy.includes('luxurious')) {
     addTag('luxury')
@@ -92,14 +132,14 @@ export function profileToSignals(profileDocument) {
     boost('culture', 4)
   }
 
-  if (payload.wouldYouRatherOceanOrMountain === 'Ocean waves') {
+  if (payload.wouldYouRatherOceanOrMountain === 'Ocean waves' || hasText('beach') || hasText('island') || hasText('ocean')) {
     addType('beach')
     addType('island')
     addTag('beach')
     boost('beach', 5)
   }
 
-  if (payload.wouldYouRatherOceanOrMountain === 'Mountain air') {
+  if (payload.wouldYouRatherOceanOrMountain === 'Mountain air' || hasText('mountain') || hasText('hills')) {
     addType('mountain')
     addType('nature')
     addTag('mountain')
@@ -107,14 +147,14 @@ export function profileToSignals(profileDocument) {
     boost('nature', 3)
   }
 
-  if (payload.wouldYouRatherExploreOrLounge === 'Exploring') {
+  if (payload.wouldYouRatherExploreOrLounge === 'Exploring' || hasText('explore') || hasText('adventure')) {
     addTag('adventure')
     addTag('culture')
     boost('adventure', 4)
     boost('culture', 2)
   }
 
-  if (payload.wouldYouRatherExploreOrLounge === 'Lounging') {
+  if (payload.wouldYouRatherExploreOrLounge === 'Lounging' || hasText('relax') || hasText('lounge') || hasText('resort')) {
     addTag('relaxation')
     addTag('resort')
     boost('slowTravel', 4)
@@ -122,14 +162,14 @@ export function profileToSignals(profileDocument) {
     boost('privacy', 2)
   }
 
-  if (payload.wouldYouRatherStreetFoodOrMichelin === 'Street food') {
+  if (payload.wouldYouRatherStreetFoodOrMichelin === 'Street food' || hasText('street food') || hasText('culinary')) {
     addTag('food')
     addTag('local immersion')
     boost('food', 4)
     boost('culture', 2)
   }
 
-  if (payload.wouldYouRatherStreetFoodOrMichelin === 'Michelin star dining') {
+  if (payload.wouldYouRatherStreetFoodOrMichelin === 'Michelin star dining' || hasText('michelin') || hasText('fine dining')) {
     addTag('fine dining')
     addTag('luxury')
     boost('food', 3)
@@ -177,104 +217,104 @@ export function profileToSignals(profileDocument) {
     boost('shopping', 4)
   }
 
-  if (vibeWords.includes('romantic')) {
+  if (vibeWords.includes('romantic') || hasText('romantic') || hasText('honeymoon')) {
     addTag('romantic')
     boost('romance', 5)
   }
-  if (vibeWords.includes('spiritual')) {
+  if (vibeWords.includes('spiritual') || hasText('spiritual')) {
     addTag('spiritual')
     boost('wellness', 2)
     boost('culture', 1)
   }
-  if (vibeWords.includes('thrilling')) {
+  if (vibeWords.includes('thrilling') || hasText('thrilling')) {
     addTag('adventure')
     boost('adventure', 4)
   }
-  if (vibeWords.includes('indulgent')) {
+  if (vibeWords.includes('indulgent') || hasText('luxury') || hasText('ultra luxury')) {
     addTag('luxury')
     boost('luxury', 4)
   }
-  if (vibeWords.includes('secluded')) {
+  if (vibeWords.includes('secluded') || hasText('private') || hasText('secluded')) {
     addTag('privacy')
     boost('privacy', 4)
   }
-  if (vibeWords.includes('calm')) {
+  if (vibeWords.includes('calm') || hasText('calm') || hasText('quiet')) {
     addTag('quiet')
     boost('slowTravel', 2)
     boost('wellness', 2)
   }
 
-  if (mustHaves.includes('private pool')) {
+  if (mustHaves.includes('private pool') || hasText('private pool')) {
     addTag('private villa')
     addTag('privacy')
     boost('privacy', 4)
     boost('luxury', 2)
   }
 
-  if (mustHaves.includes('sea view')) {
+  if (mustHaves.includes('sea view') || hasText('sea view') || hasText('ocean view')) {
     addTag('ocean view')
     addTag('beach')
     boost('beach', 3)
   }
 
-  if (mustHaves.includes('butler')) {
+  if (mustHaves.includes('butler') || hasText('butler')) {
     addTag('ultra luxury')
     boost('luxury', 4)
   }
 
-  if (mustHaves.includes('spa')) {
+  if (mustHaves.includes('spa') || hasText('spa')) {
     addTag('wellness')
     boost('wellness', 3)
   }
 
-  if (mustHaves.includes('kids club')) {
+  if (mustHaves.includes('kids club') || hasText('kids club')) {
     addTag('family')
     boost('family', 4)
   }
 
-  if (dealBreakers.includes('crowd')) addAvoid('crowded')
+  if (dealBreakers.includes('crowd') || hasText('avoid crowds')) addAvoid('crowded')
   if (dealBreakers.includes('budget hotel')) addAvoid('budget')
   if (dealBreakers.includes('red-eye')) addAvoid('complex flights')
-  if (dealBreakers.includes('noise')) addAvoid('noisy')
+  if (dealBreakers.includes('noise') || hasText('noise')) addAvoid('noisy')
   if (dealBreakers.includes('party')) addAvoid('nightlife')
   if (dealBreakers.includes('cold')) addAvoid('cold')
   if (dealBreakers.includes('transfers')) addAvoid('complex logistics')
 
-  if (dreamExperiences.includes('maldives')) {
+  if (dreamExperiences.includes('maldives') || hasText('maldives')) {
     addType('island')
     addTag('beach')
     boost('beach', 3)
     boost('luxury', 2)
   }
 
-  if (dreamExperiences.includes('kyoto')) {
+  if (dreamExperiences.includes('kyoto') || hasText('kyoto')) {
     addType('culture')
     addTag('culture')
     boost('culture', 3)
   }
 
-  if (dreamExperiences.includes('cappadocia')) {
+  if (dreamExperiences.includes('cappadocia') || hasText('cappadocia')) {
     addType('bucket list')
     addTag('adventure')
     boost('adventure', 2)
   }
 
-  if (pastFavorites.includes('beach')) {
+  if (pastFavorites.includes('beach') || hasText('beach')) {
     addTag('beach')
     boost('beach', 3)
   }
 
-  if (pastFavorites.includes('food')) {
+  if (pastFavorites.includes('food') || hasText('food')) {
     addTag('food')
     boost('food', 2)
   }
 
-  if (pastFavorites.includes('culture')) {
+  if (pastFavorites.includes('culture') || hasText('culture')) {
     addTag('culture')
     boost('culture', 2)
   }
 
-  if (pastFavorites.includes('relax')) {
+  if (pastFavorites.includes('relax') || hasText('relax')) {
     addTag('slow travel')
     boost('slowTravel', 2)
   }
@@ -284,33 +324,34 @@ export function profileToSignals(profileDocument) {
   if (wontReturn.includes('boring')) addAvoid('slow')
   if (wontReturn.includes('touristy')) addAvoid('touristy')
 
-  if (hobbies.includes('hiking')) {
+  if (hobbies.includes('hiking') || hasText('hiking')) {
     addTag('nature')
     addTag('adventure')
     boost('nature', 3)
     boost('adventure', 2)
   }
 
-  if (hobbies.includes('art')) {
+  if (hobbies.includes('art') || hasText('art')) {
     addTag('culture')
     boost('culture', 2)
   }
 
-  if (hobbies.includes('shopping')) {
+  if (hobbies.includes('shopping') || hasText('shopping')) {
     addTag('shopping')
     boost('shopping', 2)
   }
 
-  if (cuisine.includes('japanese') || cuisine.includes('omakase')) {
+  if (cuisine.includes('japanese') || cuisine.includes('omakase') || hasText('japanese') || hasText('omakase')) {
     addTag('food')
     boost('food', 2)
   }
 
-  const tripType = (profileDocument?.tripType || '').toLowerCase()
+  const tripType = (profileDocument?.tripType || profileDocument?.purposeOfTravel || '').toLowerCase()
 
   if (tripType.includes('honeymoon') || tripType.includes('romantic')) {
     boost('romance', 5)
     addTag('romantic')
+    addTag('privacy')
   }
 
   if (tripType.includes('wellness')) {
@@ -326,6 +367,39 @@ export function profileToSignals(profileDocument) {
   if (tripType.includes('celebration')) {
     boost('luxury', 2)
     boost('romance', 2)
+  }
+
+  if (tripType.includes('holiday') || tripType.includes('vacation')) {
+    boost('luxury', 1)
+    boost('slowTravel', 1)
+  }
+
+  const travelStyle = `${profileDocument?.travelStyle || ''} ${profileDocument?.luxuryStyle || ''} ${profileDocument?.vibe || ''}`.toLowerCase()
+
+  if (travelStyle.includes('luxury')) {
+    addTag('luxury')
+    boost('luxury', 4)
+  }
+  if (travelStyle.includes('wellness')) {
+    addTag('wellness')
+    boost('wellness', 4)
+  }
+  if (travelStyle.includes('romantic')) {
+    addTag('romantic')
+    boost('romance', 4)
+  }
+  if (travelStyle.includes('adventure')) {
+    addTag('adventure')
+    boost('adventure', 4)
+  }
+  if (travelStyle.includes('culture')) {
+    addTag('culture')
+    boost('culture', 3)
+  }
+  if (travelStyle.includes('beach')) {
+    addTag('beach')
+    addType('beach')
+    boost('beach', 4)
   }
 
   signals.preferredTags = [...new Set(signals.preferredTags)]
