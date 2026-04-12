@@ -46,7 +46,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (!process.env.SANITY_PROJECT_ID || !process.env.SANITY_DATASET || !process.env.SANITY_API_TOKEN) {
+    if (
+      !process.env.SANITY_PROJECT_ID ||
+      !process.env.SANITY_DATASET ||
+      !process.env.SANITY_API_TOKEN
+    ) {
       return res.status(500).json({
         success: false,
         error: 'Missing Sanity environment variables',
@@ -109,6 +113,7 @@ export default async function handler(req, res) {
       : []
 
     const title = makeDraftTitle(profile, destination)
+
     const summaryParts = [
       normalizeString(profile.tripType),
       destinationTitle,
