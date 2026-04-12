@@ -107,7 +107,7 @@ function AppShell() {
           <Route path="/client-profiles/:id/recommendations" element={<RecommendationsPage />} />
           <Route path="/clients/:id/recommendations" element={<RecommendationsPage />} />
 
-          <Route path="/itinerary-builder" element={<ItineraryBuilderPage />} />
+          <Route path="/itinerary-builder" element={<Navigate to="/client-profiles" replace />} />
           <Route path="/itinerary-builder/:profileId" element={<ItineraryBuilderPage />} />
           <Route path="/client-profiles/:id/itinerary-builder" element={<ItineraryBuilderPage />} />
           <Route path="/clients/:id/itinerary-builder" element={<ItineraryBuilderPage />} />
