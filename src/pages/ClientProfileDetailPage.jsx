@@ -4,11 +4,13 @@ import { client } from '../lib/sanity';
 
 const clientProfileDetailPageQuery = `
 {
-  "profile": *[_type == "clientProfile" && _id == $id][0]{
+  "profile": *[_type in ["clientProfile", "clientTravelPersonality"] && _id == $id][0]{
     _id,
+    _type,
     _createdAt,
     _updatedAt,
 
+    title,
     clientName,
     fullName,
     name,
@@ -19,6 +21,7 @@ const clientProfileDetailPageQuery = `
     company,
     nationality,
     location,
+    cityOfResidence,
 
     tripName,
     tripType,
@@ -29,14 +32,17 @@ const clientProfileDetailPageQuery = `
     occasion,
     purposeOfTravel,
     tripLength,
+    tripLengthDays,
     duration,
     nights,
     days,
     budget,
+    budgetBand,
     budgetRange,
     budgetPerPerson,
     totalBudget,
     partySize,
+    travellerCount,
     travelers,
     adults,
     children,
@@ -49,9 +55,11 @@ const clientProfileDetailPageQuery = `
     travelMonths,
     dateFlexibility,
     notes,
+    relationshipManagerNotes,
     summary,
+    autoSummary,
     questionnaireOutput,
-
+    profilePayload,
     recommendationSnapshots[]{
       ...,
       _key
@@ -108,6 +116,7 @@ function getDisplayName(profile) {
     profile.clientName ||
     profile.fullName ||
     profile.name ||
+    profile.title ||
     joined ||
     profile.email ||
     'Client'
@@ -117,6 +126,7 @@ function getDisplayName(profile) {
 function getTravelers(profile) {
   if (!profile) return '—';
 
+  if (profile.travellerCount) return profile.travellerCount;
   if (profile.partySize) return profile.partySize;
   if (profile.travelers) return profile.travelers;
 
@@ -280,6 +290,7 @@ export default function ClientProfileDetailPage() {
       {
         label: 'Budget',
         value:
+          profile.budgetBand ||
           profile.budgetRange ||
           profile.budget ||
           profile.budgetPerPerson ||
@@ -287,10 +298,19 @@ export default function ClientProfileDetailPage() {
           '—',
       },
       { label: 'Travellers', value: getTravelers(profile) },
-      { label: 'Duration', value: profile.tripLength || profile.duration || profile.nights || profile.days || '—' },
+      {
+        label: 'Duration',
+        value:
+          profile.tripLengthDays ||
+          profile.tripLength ||
+          profile.duration ||
+          profile.nights ||
+          profile.days ||
+          '—',
+      },
       { label: 'Travel Window', value: getTravelWindow(profile) },
       { label: 'Departure', value: profile.departureCity || profile.originCity || profile.preferredDeparture || '—' },
-      { label: 'Location', value: profile.location || profile.nationality || '—' },
+      { label: 'Location', value: profile.location || profile.cityOfResidence || profile.nationality || '—' },
     ];
   }, [profile]);
 
@@ -425,11 +445,15 @@ export default function ClientProfileDetailPage() {
               ))}
             </div>
 
-            {(profile.summary || profile.notes || profile.questionnaireOutput) && (
+            {(profile.summary || profile.autoSummary || profile.relationshipManagerNotes || profile.notes || profile.questionnaireOutput) && (
               <div style={textBlockStyle}>
                 <div style={textBlockTitleStyle}>Notes / Summary</div>
                 <div style={textBlockBodyStyle}>
-                  {profile.summary || profile.notes || profile.questionnaireOutput}
+                  {profile.summary ||
+                    profile.autoSummary ||
+                    profile.relationshipManagerNotes ||
+                    profile.notes ||
+                    profile.questionnaireOutput}
                 </div>
               </div>
             )}
@@ -955,10 +979,10 @@ const inlineLinkStyle = {
 
 const emptyStateStyle = {
   padding: '18px',
-  borderRadius: '18px',
-  border: '1px dashed rgba(255,255,255,0.12)',
-  color: 'rgba(255,255,255,0.65)',
-  background: 'rgba(255,255,255,0.02)',
+  borderRadius: '16px',
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: 'rgba(255,255,255,0.7)',
 };
 
 const actionRowStyle = {
