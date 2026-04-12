@@ -6,7 +6,6 @@ import HomePage from './pages/HomePage';
 import ClientIntakePage from './pages/ClientIntakePage';
 import ClientProfilesPage from './pages/ClientProfilesPage';
 import ClientProfileDetailPage from './pages/ClientProfileDetailPage';
-import ClientDashboardPage from './pages/ClientDashboardPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import ItineraryBuilderPage from './pages/ItineraryBuilderPage';
 import ItineraryDraftsPage from './pages/ItineraryDraftsPage';
@@ -102,10 +101,6 @@ function AppShell() {
 
           <Route path="/client-profiles/:id" element={<ClientProfileDetailPage />} />
           <Route path="/clients/:id" element={<ClientProfileDetailPage />} />
-
-          <Route path="/client-profiles/:id/dashboard" element={<ClientDashboardPage />} />
-          <Route path="/clients/:id/dashboard" element={<ClientDashboardPage />} />
-          <Route path="/dashboard/:profileId" element={<ClientDashboardPage />} />
 
           <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/recommendations/:profileId" element={<RecommendationsPage />} />
