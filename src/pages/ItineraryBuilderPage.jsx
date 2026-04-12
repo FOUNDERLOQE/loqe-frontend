@@ -1,58 +1,229 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { client } from '../lib/sanity'
-import { clientProfilesQuery } from '../lib/queries'
+
+const clientProfileByIdQuery = `
+  *[_type == "clientProfile" && _id == $id][0]{
+    _id,
+    _createdAt,
+    _updatedAt,
+    clientName,
+    fullName,
+    name,
+    firstName,
+    lastName,
+    email,
+    phone,
+    company,
+    nationality,
+    location,
+    cityOfResidence,
+    tripName,
+    tripType,
+    purposeOfTravel,
+    travelStyle,
+    luxuryStyle,
+    pace,
+    vibe,
+    occasion,
+    tripLength,
+    tripLengthDays,
+    duration,
+    nights,
+    days,
+    budget,
+    budgetBand,
+    budgetRange,
+    budgetPerPerson,
+    totalBudget,
+    partySize,
+    travellerCount,
+    travelers,
+    adults,
+    children,
+    kids,
+    departureCity,
+    originCity,
+    preferredDeparture,
+    preferredTravelMonth,
+    preferredMonths,
+    travelMonths,
+    dateFlexibility,
+    notes,
+    summary,
+    autoSummary,
+    questionnaireOutput,
+    profilePayload
+  }
+`
+
+const itineraryDraftsByProfileQuery = `
+  *[
+    _type == "itineraryDraft" &&
+    (
+      clientProfile._ref == $id ||
+      clientProfile->_id == $id
+    )
+  ] | order(coalesce(updatedAt, _updatedAt, _createdAt) desc){
+    _id,
+    _createdAt,
+    _updatedAt,
+    title,
+    name,
+    status,
+    summary,
+    notes,
+    tripName,
+    version,
+    dayCount,
+    nights,
+    startDate,
+    endDate
+  }
+`
+
+function formatDate(value) {
+  if (!value) return '—'
+
+  try {
+    return new Date(value).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return '—'
+  }
+}
+
+function getDisplayName(profileDoc) {
+  if (!profileDoc) return 'Untitled Client'
+
+  const joined = [profileDoc.firstName, profileDoc.lastName].filter(Boolean).join(' ').trim()
+
+  return (
+    profileDoc.fullName ||
+    profileDoc.clientName ||
+    profileDoc.name ||
+    joined ||
+    profileDoc.email ||
+    'Untitled Client'
+  )
+}
+
+function getTripLength(profileDoc) {
+  return (
+    profileDoc?.tripLengthDays ||
+    profileDoc?.tripLength ||
+    profileDoc?.duration ||
+    profileDoc?.nights ||
+    profileDoc?.days ||
+    '—'
+  )
+}
+
+function getTravellerCount(profileDoc) {
+  if (!profileDoc) return '—'
+
+  if (profileDoc.travellerCount) return profileDoc.travellerCount
+  if (profileDoc.partySize) return profileDoc.partySize
+  if (profileDoc.travelers) return profileDoc.travelers
+
+  const parts = []
+  if (profileDoc.adults) parts.push(`${profileDoc.adults} adult${Number(profileDoc.adults) > 1 ? 's' : ''}`)
+  if (profileDoc.children || profileDoc.kids) {
+    const kids = profileDoc.children || profileDoc.kids
+    parts.push(`${kids} child${Number(kids) > 1 ? 'ren' : ''}`)
+  }
+
+  return parts.length ? parts.join(', ') : '—'
+}
 
 function ItineraryBuilderPage() {
+  const { id, profileId } = useParams()
   const location = useLocation()
   const routeState = location.state || {}
+
+  const resolvedProfileId =
+    id ||
+    profileId ||
+    routeState?.clientProfile?._id ||
+    routeState?.profileId ||
+    ''
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [profileDoc, setProfileDoc] = useState(null)
+  const [itineraryDrafts, setItineraryDrafts] = useState([])
   const [selectedRecommendation, setSelectedRecommendation] = useState(
-    routeState?.selectedDestination || null
+    routeState?.selectedDestination || routeState?.selectedRecommendation || null
   )
   const [creatingDraft, setCreatingDraft] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
 
   useEffect(() => {
-    async function loadProfile() {
+    let cancelled = false
+
+    async function loadBuilderData() {
       try {
         setLoading(true)
         setError('')
         setSaveMessage('')
 
-        if (routeState?.clientProfile) {
-          setProfileDoc(routeState.clientProfile)
-          setLoading(false)
-          return
+        const routedProfile = routeState?.clientProfile || null
+
+        if (!resolvedProfileId && !routedProfile) {
+          throw new Error('No client profile ID found for itinerary builder.')
         }
 
-        const profiles = await client.fetch(clientProfilesQuery)
+        let profile = routedProfile
 
-        if (!profiles || profiles.length === 0) {
-          throw new Error('No saved client profile found yet.')
+        if (!profile?._id) {
+          profile = await client.fetch(clientProfileByIdQuery, { id: resolvedProfileId })
         }
 
-        setProfileDoc(profiles[0])
+        if (!profile?._id) {
+          throw new Error('Client profile not found.')
+        }
+
+        const drafts = await client.fetch(itineraryDraftsByProfileQuery, { id: profile._id })
+
+        if (!cancelled) {
+          setProfileDoc(profile)
+          setItineraryDrafts(Array.isArray(drafts) ? drafts : [])
+        }
       } catch (err) {
         console.error('ITINERARY_BUILDER_LOAD_ERROR', err)
-        setError(err?.message || 'Failed to load itinerary builder')
+        if (!cancelled) {
+          setError(err?.message || 'Failed to load itinerary builder')
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
 
-    loadProfile()
-  }, [routeState])
+    loadBuilderData()
+
+    return () => {
+      cancelled = true
+    }
+  }, [resolvedProfileId, routeState])
 
   const travelStyleSummary = useMemo(() => {
     const payload = profileDoc?.profilePayload || {}
 
     return [
       profileDoc?.tripType,
+      profileDoc?.travelStyle,
+      profileDoc?.luxuryStyle,
       profileDoc?.budgetBand,
+      profileDoc?.budgetRange,
+      profileDoc?.pace,
+      profileDoc?.vibe,
       payload?.travelEnergyDrink,
       payload?.preferredClimate,
       payload?.tripVibeWords,
@@ -80,12 +251,32 @@ function ItineraryBuilderPage() {
         body: JSON.stringify({
           profileId: profileDoc._id,
           profile: {
-            clientName: profileDoc.fullName || profileDoc.clientName || '',
-            tripType: profileDoc.tripType || '',
-            originCity: profileDoc.originCity || profileDoc.cityOfResidence || '',
-            tripLengthDays: profileDoc.tripLengthDays || null,
-            travellerCount: profileDoc.travellerCount || null,
-            budgetBand: profileDoc.budgetBand || '',
+            clientName: getDisplayName(profileDoc),
+            tripName: profileDoc.tripName || '',
+            tripType: profileDoc.tripType || profileDoc.purposeOfTravel || '',
+            originCity:
+              profileDoc.originCity ||
+              profileDoc.departureCity ||
+              profileDoc.cityOfResidence ||
+              profileDoc.location ||
+              '',
+            tripLengthDays:
+              profileDoc.tripLengthDays ||
+              profileDoc.tripLength ||
+              profileDoc.duration ||
+              profileDoc.nights ||
+              profileDoc.days ||
+              null,
+            travellerCount:
+              profileDoc.travellerCount ||
+              profileDoc.partySize ||
+              profileDoc.travelers ||
+              null,
+            budgetBand:
+              profileDoc.budgetBand ||
+              profileDoc.budgetRange ||
+              profileDoc.budget ||
+              '',
           },
           destination: {
             title: selectedRecommendation.title || '',
@@ -121,6 +312,9 @@ function ItineraryBuilderPage() {
       }
 
       setSaveMessage('Itinerary draft created successfully in Sanity.')
+
+      const drafts = await client.fetch(itineraryDraftsByProfileQuery, { id: profileDoc._id })
+      setItineraryDrafts(Array.isArray(drafts) ? drafts : [])
     } catch (err) {
       console.error('CREATE_ITINERARY_DRAFT_CLIENT_ERROR', err)
       setSaveMessage(
@@ -135,8 +329,8 @@ function ItineraryBuilderPage() {
     return (
       <div className="page page-luxury">
         <div className="page-topbar">
-          <Link to="/" className="back-link">
-            ← Back to home
+          <Link to={profileDoc?._id ? `/client-profiles/${profileDoc._id}` : '/client-profiles'} className="back-link">
+            ← Back to client profile
           </Link>
         </div>
         <div className="glass-card">
@@ -150,8 +344,8 @@ function ItineraryBuilderPage() {
     return (
       <div className="page page-luxury">
         <div className="page-topbar">
-          <Link to="/" className="back-link">
-            ← Back to home
+          <Link to="/client-profiles" className="back-link">
+            ← Back to client profiles
           </Link>
         </div>
         <div className="glass-card">
@@ -164,8 +358,8 @@ function ItineraryBuilderPage() {
   return (
     <div className="page page-luxury">
       <div className="page-topbar">
-        <Link to="/" className="back-link">
-          ← Back to home
+        <Link to={`/client-profiles/${profileDoc?._id}`} className="back-link">
+          ← Back to client profile
         </Link>
       </div>
 
@@ -181,17 +375,20 @@ function ItineraryBuilderPage() {
       {profileDoc && (
         <section className="glass-card" style={{ marginBottom: '24px', padding: '24px' }}>
           <p className="preview-label">Saved client profile</p>
-          <h2>{profileDoc.fullName || 'Untitled Client'}</h2>
-          <p className="preview-summary">{profileDoc.autoSummary || 'No summary available.'}</p>
+          <h2>{getDisplayName(profileDoc)}</h2>
+          <p className="preview-summary">
+            {profileDoc.autoSummary || profileDoc.summary || profileDoc.questionnaireOutput || 'No summary available.'}
+          </p>
 
           <div className="preview-divider" />
 
           <div className="field-stack">
-            <p><strong>Trip type:</strong> {profileDoc.tripType || '—'}</p>
-            <p><strong>Origin city:</strong> {profileDoc.originCity || profileDoc.cityOfResidence || '—'}</p>
-            <p><strong>Trip length:</strong> {profileDoc.tripLengthDays || '—'} days</p>
-            <p><strong>Travellers:</strong> {profileDoc.travellerCount || '—'}</p>
-            <p><strong>Budget band:</strong> {profileDoc.budgetBand || '—'}</p>
+            <p><strong>Trip name:</strong> {profileDoc.tripName || '—'}</p>
+            <p><strong>Trip type:</strong> {profileDoc.tripType || profileDoc.purposeOfTravel || '—'}</p>
+            <p><strong>Origin city:</strong> {profileDoc.originCity || profileDoc.departureCity || profileDoc.cityOfResidence || '—'}</p>
+            <p><strong>Trip length:</strong> {getTripLength(profileDoc)} {getTripLength(profileDoc) !== '—' ? 'days' : ''}</p>
+            <p><strong>Travellers:</strong> {getTravellerCount(profileDoc)}</p>
+            <p><strong>Budget band:</strong> {profileDoc.budgetBand || profileDoc.budgetRange || profileDoc.budget || '—'}</p>
           </div>
         </section>
       )}
@@ -199,7 +396,10 @@ function ItineraryBuilderPage() {
       <section className="glass-card" style={{ marginBottom: '24px', padding: '24px' }}>
         <p className="preview-label">Selected destination</p>
         {!selectedRecommendation ? (
-          <p>No recommendation selected yet. Go back to Recommendations and choose “Add to Itinerary”.</p>
+          <p>
+            No recommendation selected yet. Go back to Recommendations and choose
+            “Add to Itinerary”.
+          </p>
         ) : (
           <>
             <h2>{selectedRecommendation.title}</h2>
@@ -236,6 +436,40 @@ function ItineraryBuilderPage() {
 
             {saveMessage && <p className="save-message">{saveMessage}</p>}
           </>
+        )}
+      </section>
+
+      <section className="glass-card" style={{ padding: '24px' }}>
+        <p className="preview-label">Existing itinerary drafts</p>
+
+        {itineraryDrafts.length === 0 ? (
+          <p>No itinerary drafts exist for this client yet.</p>
+        ) : (
+          <div className="field-stack">
+            {itineraryDrafts.map((draft) => (
+              <div
+                key={draft._id}
+                style={{
+                  padding: '16px',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.03)',
+                }}
+              >
+                <p><strong>{draft.title || draft.name || draft.tripName || 'Untitled Draft'}</strong></p>
+                <p><strong>Status:</strong> {draft.status || 'draft'}</p>
+                <p>
+                  <strong>Updated:</strong>{' '}
+                  {formatDate(draft.updatedAt || draft._updatedAt || draft._createdAt)}
+                </p>
+                <div style={{ marginTop: '10px' }}>
+                  <Link to={`/itinerary-drafts/${draft._id}`} className="back-link">
+                    Open draft →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>
