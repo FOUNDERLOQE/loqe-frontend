@@ -1354,4 +1354,26 @@ a {
   color: #e2cfad;
   font-weight: 700;
 }
+  .itinerary-days-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.itinerary-day-card {
+  padding: 1.25rem;
+  border-radius: 22px;
+}
+
+.itinerary-day-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.itinerary-day-top h3 {
+  margin: 0.2rem 0 0;
+}
 }
