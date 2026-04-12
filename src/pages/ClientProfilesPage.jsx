@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom'
 import { client } from '../lib/sanity'
 
 const clientProfilesListQuery = `
-  *[_type == "clientProfile"] | order(coalesce(_updatedAt, _createdAt) desc){
+  *[_type in ["clientProfile", "clientTravelPersonality"]] | order(coalesce(_updatedAt, _createdAt) desc){
     _id,
+    _type,
     _createdAt,
     _updatedAt,
 
     clientType,
 
+    title,
     clientName,
     fullName,
     name,
@@ -65,6 +67,7 @@ function getDisplayName(profile) {
     profile.clientName ||
     profile.fullName ||
     profile.name ||
+    profile.title ||
     joined ||
     profile.email ||
     'Untitled Client'
