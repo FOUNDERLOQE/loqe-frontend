@@ -126,9 +126,9 @@ function getDisplayName(profile) {
 function getTravelers(profile) {
   if (!profile) return '—';
 
-  if (profile.travellerCount) return profile.travellerCount;
-  if (profile.partySize) return profile.partySize;
-  if (profile.travelers) return profile.travelers;
+  if (profile.travellerCount) return `${profile.travellerCount} traveller${Number(profile.travellerCount) > 1 ? 's' : ''}`;
+  if (profile.partySize) return `${profile.partySize} traveller${Number(profile.partySize) > 1 ? 's' : ''}`;
+  if (profile.travelers) return `${profile.travelers} traveller${Number(profile.travelers) > 1 ? 's' : ''}`;
 
   const parts = [];
   if (profile.adults) parts.push(`${profile.adults} adult${Number(profile.adults) > 1 ? 's' : ''}`);
@@ -280,13 +280,37 @@ export default function ClientProfileDetailPage() {
   const overviewCards = useMemo(() => {
     if (!profile) return [];
 
+    const payload = profile.profilePayload || {};
+
     return [
-      { label: 'Trip', value: profile.tripName || profile.tripType || profile.purposeOfTravel || '—' },
-      { label: 'Occasion', value: profile.occasion || '—' },
-      { label: 'Travel Style', value: profile.travelStyle || '—' },
-      { label: 'Luxury Style', value: profile.luxuryStyle || '—' },
-      { label: 'Pace', value: profile.pace || '—' },
-      { label: 'Vibe', value: profile.vibe || '—' },
+      {
+        label: 'Trip',
+        value: profile.tripName || profile.tripType || profile.purposeOfTravel || '—',
+      },
+      {
+        label: 'Travel Energy',
+        value: payload.travelEnergyDrink || '—',
+      },
+      {
+        label: 'Preferred Climate',
+        value: payload.preferredClimate || '—',
+      },
+      {
+        label: 'Ocean / Mountain',
+        value: payload.wouldYouRatherOceanOrMountain || '—',
+      },
+      {
+        label: 'Explore / Lounge',
+        value: payload.wouldYouRatherExploreOrLounge || '—',
+      },
+      {
+        label: 'Food Style',
+        value: payload.wouldYouRatherStreetFoodOrMichelin || '—',
+      },
+      {
+        label: 'Planning Style',
+        value: payload.wouldYouRatherPlanOrFlow || '—',
+      },
       {
         label: 'Budget',
         value:
@@ -297,7 +321,10 @@ export default function ClientProfileDetailPage() {
           profile.totalBudget ||
           '—',
       },
-      { label: 'Travellers', value: getTravelers(profile) },
+      {
+        label: 'Travellers',
+        value: getTravelers(profile),
+      },
       {
         label: 'Duration',
         value:
@@ -308,9 +335,30 @@ export default function ClientProfileDetailPage() {
           profile.days ||
           '—',
       },
-      { label: 'Travel Window', value: getTravelWindow(profile) },
-      { label: 'Departure', value: profile.departureCity || profile.originCity || profile.preferredDeparture || '—' },
-      { label: 'Location', value: profile.location || profile.cityOfResidence || profile.nationality || '—' },
+      {
+        label: 'Origin',
+        value: profile.originCity || profile.departureCity || profile.preferredDeparture || '—',
+      },
+      {
+        label: 'Travel Window',
+        value: getTravelWindow(profile),
+      },
+      {
+        label: 'Vibe Words',
+        value: payload.tripVibeWords || '—',
+      },
+      {
+        label: 'Dream Experiences',
+        value: payload.dreamExperiences || '—',
+      },
+      {
+        label: 'Deal Breakers',
+        value: payload.absoluteDealBreakers || '—',
+      },
+      {
+        label: 'Hobbies / Passions',
+        value: payload.hobbiesPassions || '—',
+      },
     ];
   }, [profile]);
 
@@ -445,7 +493,15 @@ export default function ClientProfileDetailPage() {
               ))}
             </div>
 
-            {(profile.summary || profile.autoSummary || profile.relationshipManagerNotes || profile.notes || profile.questionnaireOutput) && (
+            {(
+              profile.summary ||
+              profile.autoSummary ||
+              profile.relationshipManagerNotes ||
+              profile.notes ||
+              profile.questionnaireOutput ||
+              profile.profilePayload?.favoritePastDestinationsWhy ||
+              profile.profilePayload?.mostMemorableExperiencesEver
+            ) && (
               <div style={textBlockStyle}>
                 <div style={textBlockTitleStyle}>Notes / Summary</div>
                 <div style={textBlockBodyStyle}>
@@ -453,7 +509,9 @@ export default function ClientProfileDetailPage() {
                     profile.autoSummary ||
                     profile.relationshipManagerNotes ||
                     profile.notes ||
-                    profile.questionnaireOutput}
+                    profile.questionnaireOutput ||
+                    profile.profilePayload?.favoritePastDestinationsWhy ||
+                    profile.profilePayload?.mostMemorableExperiencesEver}
                 </div>
               </div>
             )}
