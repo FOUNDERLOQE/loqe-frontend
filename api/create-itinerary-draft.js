@@ -4,7 +4,7 @@ const sanity = createClient({
   projectId: process.env.SANITY_PROJECT_ID,
   dataset: process.env.SANITY_DATASET,
   apiVersion: process.env.SANITY_API_VERSION || '2024-01-01',
-  token: process.env.SANITY_API_TOKEN,
+  token: process.env.SANITY_WRITE_TOKEN,
   useCdn: false,
 })
 
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     if (
       !process.env.SANITY_PROJECT_ID ||
       !process.env.SANITY_DATASET ||
-      !process.env.SANITY_API_TOKEN
+      !process.env.SANITY_WRITE_TOKEN
     ) {
       return res.status(500).json({
         success: false,
